@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>taskCalendar Work Timeline MVP Demo</title>
+  <link rel="stylesheet" href="src/work-timeline.css">
+  <style>
+    .wt-demo-page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 24px;
+      color: #1f2933;
+      font-family: Arial, 'Malgun Gothic', sans-serif;
+    }
+
+    .wt-demo-title {
+      margin: 0 0 6px;
+      font-size: 22px;
+    }
+
+    .wt-demo-description,
+    .wt-demo-note {
+      margin: 0;
+      color: #687386;
+      font-size: 13px;
+    }
+
+    .wt-demo-panel {
+      margin-top: 16px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+
+    .wt-demo-result {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border: 1px solid #d7dde5;
+      border-radius: 12px;
+      background: #f8fafc;
+      color: #374151;
+      font-size: 13px;
+    }
+
+    .wt-demo-checks {
+      margin: 16px 0 0;
+      padding-left: 20px;
+      color: #4b5565;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <main class="wt-demo-page">
+    <h1 class="wt-demo-title">taskCalendar Work Timeline MVP Demo</h1>
+    <p class="wt-demo-description">기준 주간: 2026-06-01 ~ 2026-06-07 / 기준 월: 2026-06-01 ~ 2026-06-30 / today: 2026-06-04</p>
+
+    <section class="wt-demo-panel">
+      <div id="clickResult" class="wt-demo-result">업무 bar를 클릭하면 callback 결과가 여기에 표시됩니다.</div>
+      <div id="workTimelineDemo"></div>
+
+      <ul class="wt-demo-checks">
+        <li>상단 주간/월간 버튼으로 view를 전환할 수 있어야 합니다.</li>
+        <li>주간은 직원별 timeline, 월간은 7열 calendar grid로 표시되어야 합니다.</li>
+        <li>주간/월간 모두 일요일은 빨간색 계열, 토요일은 파란색 계열로 표시되어야 합니다.</li>
+        <li>2026-06-05 금요일은 대체공휴일로 빨간색 계열과 휴일명이 표시되어야 합니다.</li>
+        <li>2026-06-17 회사창립기념일도 월간에서 휴일 스타일과 휴일명이 표시되어야 합니다.</li>
+        <li>주간에서 해당 주와 겹치는 업무가 없는 직원은 표시되면 안 됩니다.</li>
+        <li>월간 업무는 날짜별 반복 item이 아니라 기간을 잇는 bar 형태로 표시되어야 합니다.</li>
+        <li>2026-06-03 ~ 2026-06-12 업무는 주가 바뀌는 지점에서 bar가 두 줄로 나뉘어 표시되어야 합니다.</li>
+        <li>월간에서 2026-05-01 ~ 2026-05-20, 2026-07-01 ~ 2026-07-10 업무는 표시되면 안 됩니다.</li>
+        <li>6월 둘째 주에는 월간 bar lane이 3개만 보이고 ... N 버튼이 표시되어야 합니다.</li>
+        <li>... N 버튼을 누르면 숨겨진 업무 목록 큰 창이 열려야 합니다.</li>
+        <li>2026-06-04 today 컬럼이 강조되어야 합니다.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      if (window.jQuery) {
+        return;
+      }
+
+      function MiniQuery(selector) {
+        if (typeof selector === 'string') {
+          this.nodes = Array.prototype.slice.call(document.querySelectorAll(selector));
+        } else if (selector && selector.nodeType) {
+          this.nodes = [selector];
+        } else {
+          this.nodes = [];
+        }
+      }
+
+      MiniQuery.prototype.each = function (callback) {
+        for (var i = 0; i < this.nodes.length; i += 1) {
+          if (callback.call(this.nodes[i], i, this.nodes[i]) === false) {
+            break;
+          }
+        }
+        return this;
+      };
+
+      function miniQuery(selector) {
+        return new MiniQuery(selector);
+      }
+
+      miniQuery.fn = MiniQuery.prototype;
+      miniQuery.data = function (element, key, value) {
+        element.__miniQueryData = element.__miniQueryData || {};
+        if (arguments.length === 3) {
+          element.__miniQueryData[key] = value;
+        }
+        return element.__miniQueryData[key];
+      };
+
+      window.jQuery = window.$ = miniQuery;
+    })();
+  </script>
+  <script src="src/work-timeline.js"></script>
+  <script>
+    function openTaskDetail(task) {
+      alert(
+        '업무 클릭\n' +
+        '업무명: ' + task.title + '\n' +
+        '부서: ' + task.departmentName + '\n' +
+        '담당자: ' + task.employeeName + '\n' +
+        '기간: ' + task.startDate + ' ~ ' + task.endDate
+      );
+    }
+
+    (function ($) {
+      var employees = [
+        {
+          id: 'E001',
+          name: '김상우',
+          departmentId: 'DEV',
+          departmentName: '개발팀',
+          positionName: '과장',
+          sortOrder: 10
+        },
+        {
+          id: 'E002',
+          name: '황하나',
+          departmentId: 'DEV',
+          departmentName: '개발팀',
+          positionName: '대리',
+          sortOrder: 20
+        },
+        {
+          id: 'E003',
+          name: '한인정',
+          departmentId: 'OPS',
+          departmentName: '운영팀',
+          positionName: '사원',
+          sortOrder: 30
+        },
+        {
+          id: 'E004',
+          name: '나은아',
+          departmentId: 'PLAN',
+          departmentName: '기획팀',
+          positionName: '대리',
+          sortOrder: 40
+        },
+        {
+          id: 'E005',
+          name: '오세진',
+          departmentId: 'OPS',
+          departmentName: '운영팀',
+          positionName: '대리',
+          sortOrder: 50
+        },
+        {
+          id: 'E006',
+          name: '문도윤',
+          departmentId: 'PLAN',
+          departmentName: '기획팀',
+          positionName: '사원',
+          sortOrder: 60
+        }
+      ];
+
+      var tasks = [
+        {
+          taskId: 'T001',
+          employeeId: 'E001',
+          employeeName: '김상우',
+          departmentId: 'D001',
+          departmentName: '개발팀',
+          title: '정산 API 개선',
+          startDate: '2026-06-02',
+          endDate: '2026-06-05',
+          status: 'IN_PROGRESS',
+          progressRate: 40
+        },
+        {
+          taskId: 'T002',
+          employeeId: 'E001',
+          employeeName: '김상우',
+          departmentId: 'D001',
+          departmentName: '개발팀',
+          title: '이전 달 시작 데이터 전환',
+          startDate: '2026-05-25',
+          endDate: '2026-06-05',
+          status: 'DELAYED'
+        },
+        {
+          taskId: 'T003',
+          employeeId: 'E001',
+          employeeName: '김상우',
+          departmentId: 'D001',
+          departmentName: '개발팀',
+          title: '분기 통합 프로젝트',
+          startDate: '2026-05-25',
+          endDate: '2026-07-10',
+          status: 'IN_PROGRESS'
+        },
+        {
+          taskId: 'T004',
+          employeeId: 'E002',
+          employeeName: '황하나',
+          departmentId: 'D001',
+          departmentName: '개발팀',
+          title: '이번 달 시작 다음 달 종료 작업',
+          startDate: '2026-06-20',
+          endDate: '2026-07-10',
+          status: 'HOLD'
+        },
+        {
+          taskId: 'T005',
+          employeeId: 'E002',
+          employeeName: '황하나',
+          departmentId: 'D001',
+          departmentName: '개발팀',
+          title: '5월 종료 업무 - 6월에는 표시되면 안 됨',
+          startDate: '2026-05-01',
+          endDate: '2026-05-20',
+          status: 'DONE'
+        },
+        {
+          taskId: 'T006',
+          employeeId: 'E001',
+          employeeName: '김상우',
+          departmentId: 'D001',
+          departmentName: '개발팀',
+          title: '하루짜리 배포 점검',
+          startDate: '2026-06-04',
+          endDate: '2026-06-04',
+          status: 'DONE'
+        },
+        {
+          taskId: 'T007',
+          employeeId: 'E003',
+          employeeName: '한인정',
+          departmentId: 'D002',
+          departmentName: '운영팀',
+          title: '관리자 화면 수정',
+          startDate: '2026-06-04',
+          endDate: '2026-06-04',
+          status: 'TODO'
+        },
+        {
+          taskId: 'T008',
+          employeeId: 'E002',
+          employeeName: '황하나',
+          departmentId: 'D001',
+          departmentName: '개발팀',
+          title: '7월 시작 업무 - 6월에는 표시되면 안 됨',
+          startDate: '2026-07-01',
+          endDate: '2026-07-10',
+          status: 'TODO'
+        },
+        {
+          taskId: 'T009',
+          employeeId: 'E004',
+          employeeName: '나은아',
+          departmentId: 'D003',
+          departmentName: '기획팀',
+          title: '긴 업무 제목 예시 - 고객사 요청사항 분석 및 내부 검토 회의 결과를 반영한 화면 개선 작업',
+          startDate: '2026-06-10',
+          endDate: '2026-06-18',
+          status: 'IN_PROGRESS'
+        },
+        {
+          taskId: 'T010',
+          employeeId: 'E003',
+          employeeName: '한인정',
+          departmentId: 'D002',
+          departmentName: '운영팀',
+          title: '운영 배치 점검',
+          startDate: '2026-06-06',
+          endDate: '2026-06-06',
+          status: 'HOLD'
+        },
+        {
+          taskId: 'T011',
+          employeeId: 'E004',
+          employeeName: '나은아',
+          departmentId: 'D003',
+          departmentName: '기획팀',
+          title: '서비스 정책 검토',
+          startDate: '2026-06-04',
+          endDate: '2026-06-04',
+          status: 'TODO'
+        },
+        {
+          taskId: 'T012',
+          employeeId: 'E005',
+          employeeName: '오세진',
+          departmentId: 'D002',
+          departmentName: '운영팀',
+          title: '주간 숨김 테스트 - 이전 주에 종료된 업무만 있음',
+          startDate: '2026-05-10',
+          endDate: '2026-05-20',
+          status: 'DONE'
+        },
+        {
+          taskId: 'T013',
+          employeeId: 'E006',
+          employeeName: '문도윤',
+          departmentId: 'D003',
+          departmentName: '기획팀',
+          title: '주간 숨김 테스트 - 다음 주 이후 시작 업무만 있음',
+          startDate: '2026-06-08',
+          endDate: '2026-06-10',
+          status: 'TODO'
+        },
+        {
+          taskId: 'T014',
+          employeeId: 'E003',
+          employeeName: '한인정',
+          departmentId: 'D002',
+          departmentName: '운영팀',
+          title: '대체공휴일 모달 테스트 업무',
+          startDate: '2026-06-05',
+          endDate: '2026-06-05',
+          status: 'TODO'
+        },
+        {
+          taskId: 'T015',
+          employeeId: 'E004',
+          employeeName: '나은아',
+          departmentId: 'D003',
+          departmentName: '기획팀',
+          title: '대체공휴일 숨김 목록 확인 업무',
+          startDate: '2026-06-05',
+          endDate: '2026-06-05',
+          status: 'HOLD'
+        },
+        {
+          taskId: 'T016',
+          employeeId: 'E003',
+          employeeName: '한인정',
+          departmentId: 'D002',
+          departmentName: '운영팀',
+          title: '주가 바뀌는 월간 bar 분할 테스트',
+          startDate: '2026-06-03',
+          endDate: '2026-06-12',
+          status: 'IN_PROGRESS'
+        },
+        {
+          taskId: 'T017',
+          employeeId: 'E004',
+          employeeName: '나은아',
+          departmentId: 'D003',
+          departmentName: '기획팀',
+          title: '둘째 주 overflow lane 테스트 A',
+          startDate: '2026-06-07',
+          endDate: '2026-06-13',
+          status: 'TODO'
+        },
+        {
+          taskId: 'T018',
+          employeeId: 'E002',
+          employeeName: '황하나',
+          departmentId: 'D001',
+          departmentName: '개발팀',
+          title: '둘째 주 overflow lane 테스트 B',
+          startDate: '2026-06-09',
+          endDate: '2026-06-13',
+          status: 'DELAYED'
+        },
+        {
+          taskId: 'T019',
+          employeeId: 'E005',
+          employeeName: '오세진',
+          departmentId: 'D002',
+          departmentName: '운영팀',
+          title: '둘째 주 overflow lane 테스트 C',
+          startDate: '2026-06-08',
+          endDate: '2026-06-12',
+          status: 'HOLD'
+        }
+      ];
+
+      var demoHolidays = [
+        {
+          date: '2026-06-05',
+          name: '대체공휴일',
+          type: 'SUBSTITUTE_HOLIDAY'
+        },
+        {
+          date: '2026-06-17',
+          name: '회사창립기념일',
+          type: 'COMPANY_HOLIDAY'
+        }
+      ];
+
+      $('#workTimelineDemo').workTimeline({
+        viewType: 'month',
+        weekStartsOn: 0,
+        visibleStartDate: '2026-06-01',
+        visibleEndDate: '2026-06-07',
+        currentDate: '2026-06-04',
+        todayDate: '2026-06-04',
+        maxVisibleTasksPerDay: 3,
+        maxVisibleTaskBarsPerWeek: 3,
+        taskClickFunctionName: 'openTaskDetail',
+        employees: employees,
+        tasks: tasks,
+        holidays: demoHolidays,
+        onError: function (error) {
+          document.getElementById('clickResult').textContent = error.code + ': ' + error.message;
+        }
+      });
+    })(window.jQuery);
+  </script>
+</body>
+</html>

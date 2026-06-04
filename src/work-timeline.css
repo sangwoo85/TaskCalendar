@@ -1,0 +1,637 @@
+.wt-root {
+  --wt-border-color: #dbe4f0;
+  --wt-soft-border-color: #edf3f9;
+  --wt-text-color: #243042;
+  --wt-muted-color: #6d7b8d;
+  --wt-surface-color: #ffffff;
+  --wt-header-color: #f8fbff;
+  --wt-row-hover-color: #f7fbff;
+  --wt-primary-color: #3b82f6;
+  --wt-primary-soft-color: #e8f1ff;
+  --wt-card-shadow: 0 12px 32px rgba(36, 48, 66, 0.08);
+  --wt-employee-column-width: 220px;
+  --wt-day-cell-min-width: 96px;
+  --wt-day-count: 7;
+  padding: 16px;
+  border: 1px solid var(--wt-border-color);
+  border-radius: 18px;
+  background: var(--wt-surface-color);
+  box-shadow: var(--wt-card-shadow);
+  color: var(--wt-text-color);
+  font-family: Arial, 'Malgun Gothic', sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.wt-root * {
+  box-sizing: border-box;
+}
+
+.wt-root .wt-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  min-height: 38px;
+}
+
+.wt-root .wt-toolbar-group,
+.wt-root .wt-view-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.wt-root .wt-toolbar-title {
+  flex: 1 1 auto;
+  min-width: 170px;
+  color: #172033;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.wt-root .wt-toolbar-button,
+.wt-root .wt-view-switch-button {
+  min-height: 34px;
+  padding: 6px 13px;
+  border: 1px solid var(--wt-border-color);
+  border-radius: 999px;
+  background: var(--wt-surface-color);
+  color: var(--wt-text-color);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.wt-root .wt-toolbar-button:hover,
+.wt-root .wt-view-switch-button:hover {
+  border-color: #9ec5fe;
+  background: var(--wt-primary-soft-color);
+  color: #1d4ed8;
+}
+
+.wt-root .wt-view-switch-button.wt-is-active {
+  border-color: var(--wt-primary-color);
+  background: var(--wt-primary-color);
+  color: #ffffff;
+  box-shadow: 0 6px 14px rgba(59, 130, 246, 0.22);
+}
+
+.wt-root .wt-grid {
+  display: grid;
+  grid-template-columns: var(--wt-employee-column-width) minmax(0, 1fr);
+  border: 1px solid var(--wt-border-color);
+  border-radius: 14px;
+  background: var(--wt-surface-color);
+  overflow: auto;
+}
+
+.wt-root .wt-employee-column {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  width: var(--wt-employee-column-width);
+  background: var(--wt-surface-color);
+  border-right: 1px solid var(--wt-border-color);
+}
+
+.wt-root .wt-employee-header {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  height: 42px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--wt-border-color);
+  background: var(--wt-header-color);
+  color: #334155;
+  font-weight: 700;
+}
+
+.wt-root .wt-employee-row {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 76px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--wt-soft-border-color);
+  background: #ffffff;
+  cursor: default;
+}
+
+.wt-root .wt-employee-row:hover {
+  background: var(--wt-row-hover-color);
+}
+
+.wt-root .wt-employee-name {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wt-root .wt-employee-meta {
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--wt-muted-color);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wt-root .wt-timeline,
+.wt-root .wt-timeline-body {
+  min-width: calc(var(--wt-day-cell-min-width) * var(--wt-day-count));
+}
+
+.wt-root .wt-date-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(var(--wt-day-count), minmax(var(--wt-day-cell-min-width), 1fr));
+  height: 42px;
+  border-bottom: 1px solid var(--wt-border-color);
+  background: var(--wt-header-color);
+}
+
+.wt-root .wt-date-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: var(--wt-day-cell-min-width);
+  padding: 0 6px;
+  border-right: 1px solid var(--wt-soft-border-color);
+  color: var(--wt-muted-color);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.wt-root .wt-date-cell:last-child,
+.wt-root .wt-timeline-cell:last-child {
+  border-right: 0;
+}
+
+.wt-root .wt-date-day {
+  font-weight: 700;
+  color: var(--wt-text-color);
+}
+
+.wt-root .wt-date-weekday {
+  font-size: 12px;
+}
+
+.wt-root .wt-date-cell-weekend {
+  background: #fbfcfe;
+}
+
+.wt-root .wt-date-cell-today {
+  background: var(--wt-primary-soft-color);
+  color: #1d4ed8;
+}
+
+.wt-root .wt-date-sunday {
+  background: #fff1f2;
+  color: #dc2626;
+}
+
+.wt-root .wt-date-saturday {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.wt-root .wt-date-sunday .wt-date-day,
+.wt-root .wt-date-sunday .wt-date-weekday,
+.wt-root .wt-date-holiday .wt-date-day,
+.wt-root .wt-date-holiday .wt-date-weekday,
+.wt-root .wt-date-substitute-holiday .wt-date-day,
+.wt-root .wt-date-substitute-holiday .wt-date-weekday {
+  color: #c62828;
+}
+
+.wt-root .wt-date-saturday .wt-date-day,
+.wt-root .wt-date-saturday .wt-date-weekday {
+  color: #1a5fb4;
+}
+
+.wt-root .wt-timeline-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--wt-day-count), minmax(var(--wt-day-cell-min-width), 1fr));
+  min-height: 76px;
+  border-bottom: 1px solid var(--wt-soft-border-color);
+}
+
+.wt-root .wt-timeline-row:hover {
+  background: var(--wt-row-hover-color);
+}
+
+.wt-root .wt-timeline-cell {
+  min-width: var(--wt-day-cell-min-width);
+  border-right: 1px solid var(--wt-soft-border-color);
+}
+
+.wt-root .wt-timeline-cell-today {
+  background: rgba(38, 132, 199, 0.08);
+}
+
+.wt-root .wt-date-holiday,
+.wt-root .wt-date-substitute-holiday {
+  background: #fff1f2;
+  color: #dc2626;
+}
+
+.wt-root .wt-task-bar {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  height: 24px;
+  min-width: 28px;
+  padding: 0 10px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 999px;
+  color: #243042;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(36, 48, 66, 0.08);
+}
+
+.wt-root .wt-task-bar:focus {
+  outline: 2px solid #1d6fb8;
+  outline-offset: 1px;
+}
+
+.wt-root .wt-task-title {
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wt-root .wt-task-status-todo {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.wt-root .wt-task-status-in-progress {
+  border-color: #bfdbfe;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.wt-root .wt-task-status-done {
+  border-color: #bbf7d0;
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.wt-root .wt-task-status-delayed {
+  border-color: #fecaca;
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.wt-root .wt-task-status-hold {
+  border-color: #fde68a;
+  background: #fef3c7;
+  color: #a16207;
+}
+
+.wt-root .wt-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  padding: 24px;
+  border: 1px solid var(--wt-border-color);
+  background: var(--wt-surface-color);
+  color: var(--wt-muted-color);
+  text-align: center;
+}
+
+.wt-root .wt-state-pending {
+  border-style: dashed;
+}
+
+.wt-root .wt-month {
+  border: 1px solid var(--wt-border-color);
+  border-radius: 14px;
+  background: var(--wt-surface-color);
+  overflow: hidden;
+}
+
+.wt-root .wt-month-weekdays,
+.wt-root .wt-month-week-days,
+.wt-root .wt-month-week-bars {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.wt-root .wt-month-weekday {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border-right: 1px solid var(--wt-soft-border-color);
+  border-bottom: 1px solid var(--wt-border-color);
+  background: var(--wt-header-color);
+  color: var(--wt-muted-color);
+  font-weight: 700;
+}
+
+.wt-root .wt-month-weekday:last-child {
+  border-right: 0;
+}
+
+.wt-root .wt-month-grid {
+  display: block;
+}
+
+.wt-root .wt-month-week-row {
+  display: grid;
+  min-height: calc(58px + (var(--wt-month-visible-lanes, 1) * 28px) + 12px);
+  border-bottom: 1px solid var(--wt-border-color);
+  background: var(--wt-surface-color);
+}
+
+.wt-root .wt-month-week-row:last-child {
+  border-bottom: 0;
+}
+
+.wt-root .wt-month-week-days,
+.wt-root .wt-month-week-bars {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.wt-root .wt-month-day {
+  min-height: calc(58px + (var(--wt-month-visible-lanes, 1) * 28px) + 12px);
+  padding: 9px;
+  overflow: hidden;
+  border-right: 1px solid var(--wt-soft-border-color);
+  background: var(--wt-surface-color);
+}
+
+.wt-root .wt-month-day:nth-child(7n) {
+  border-right: 0;
+}
+
+.wt-root .wt-month-day-empty {
+  background: #fbfdff;
+}
+
+.wt-root .wt-month-day-today {
+  background: linear-gradient(180deg, var(--wt-primary-soft-color) 0%, rgba(232, 241, 255, 0.58) 100%);
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.34);
+}
+
+.wt-root .wt-day-sunday {
+  color: #dc2626;
+}
+
+.wt-root .wt-day-saturday {
+  color: #2563eb;
+}
+
+.wt-root .wt-month-day.wt-day-sunday {
+  background: #fff7f8;
+}
+
+.wt-root .wt-month-day.wt-day-saturday {
+  background: #f3f8ff;
+}
+
+.wt-root .wt-month-day.wt-day-sunday .wt-month-day-number,
+.wt-root .wt-month-weekday.wt-day-sunday,
+.wt-root .wt-month-day.wt-date-holiday .wt-month-day-number,
+.wt-root .wt-month-day.wt-date-substitute-holiday .wt-month-day-number {
+  color: #c62828;
+}
+
+.wt-root .wt-month-day.wt-day-saturday .wt-month-day-number,
+.wt-root .wt-month-weekday.wt-day-saturday {
+  color: #1a5fb4;
+}
+
+.wt-root .wt-month-day.wt-date-holiday,
+.wt-root .wt-month-day.wt-date-substitute-holiday {
+  background: #fff1f2;
+  color: #dc2626;
+}
+
+.wt-root .wt-month-day-number {
+  margin-bottom: 7px;
+  color: var(--wt-text-color);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.wt-root .wt-month-week-bars {
+  grid-auto-rows: 26px;
+  gap: 4px 0;
+  align-content: start;
+  min-height: calc(58px + (var(--wt-month-visible-lanes, 1) * 28px) + 12px);
+  padding: 58px 6px 8px;
+  background: transparent;
+  pointer-events: none;
+}
+
+.wt-root .wt-month-bar,
+.wt-root .wt-month-more {
+  display: block;
+  width: 100%;
+  min-height: 22px;
+  padding: 3px 7px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.wt-root .wt-month-bar {
+  min-width: 0;
+  height: 24px;
+  margin: 0 2px;
+  color: #243042;
+  box-shadow: 0 1px 4px rgba(36, 48, 66, 0.08);
+  pointer-events: auto;
+}
+
+.wt-root .wt-month-bar-title {
+  font-weight: 400;
+}
+
+.wt-root .wt-month-bar-owner {
+  font-weight: 700;
+}
+
+.wt-root .wt-month-bar-owner,
+.wt-root .wt-month-bar-title {
+  vertical-align: top;
+}
+
+.wt-root .wt-month-more {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.wt-root .wt-month-week-more {
+  grid-column: 1 / -1;
+  width: auto;
+  max-width: 110px;
+  margin: 0 2px;
+  justify-self: start;
+  pointer-events: auto;
+}
+
+.wt-root .wt-month-more:hover {
+  background: #dbeafe;
+}
+
+.wt-root .wt-holiday-name,
+.wt-root .wt-modal-holiday-name {
+  overflow: hidden;
+  color: #c62828;
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wt-root .wt-date-header .wt-holiday-name {
+  display: block;
+  max-width: 100%;
+  margin-left: 4px;
+}
+
+.wt-root .wt-month-day .wt-holiday-name {
+  margin: -2px 0 5px;
+}
+
+.wt-root .wt-modal-overlay {
+  position: fixed;
+  z-index: 9999;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.32);
+}
+
+.wt-root .wt-modal {
+  width: min(640px, 100%);
+  max-height: min(640px, 82vh);
+  overflow: hidden;
+  border: 1px solid var(--wt-border-color);
+  border-radius: 18px;
+  background: var(--wt-surface-color);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+}
+
+.wt-root .wt-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--wt-border-color);
+  background: var(--wt-header-color);
+}
+
+.wt-root .wt-modal-title {
+  font-weight: 700;
+}
+
+.wt-root .wt-modal-close {
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid var(--wt-border-color);
+  border-radius: 999px;
+  background: var(--wt-surface-color);
+  color: var(--wt-text-color);
+  font: inherit;
+  cursor: pointer;
+}
+
+.wt-root .wt-modal-summary {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--wt-soft-border-color);
+  color: var(--wt-muted-color);
+  font-size: 13px;
+}
+
+.wt-root .wt-modal-holiday-name {
+  padding: 10px 14px 0;
+  font-size: 13px;
+}
+
+.wt-root .wt-modal-task-list {
+  max-height: 480px;
+  overflow: auto;
+  padding: 8px 14px 14px;
+}
+
+.wt-root .wt-modal-task {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--wt-soft-border-color);
+  border-radius: 12px;
+  background: #fbfdff;
+}
+
+.wt-root .wt-modal-task-title {
+  font-weight: 700;
+}
+
+.wt-root .wt-modal-task-owner,
+.wt-root .wt-modal-task-period,
+.wt-root .wt-modal-task-status {
+  margin-top: 3px;
+  color: var(--wt-muted-color);
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .wt-root .wt-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .wt-root .wt-toolbar-title {
+    text-align: left;
+  }
+
+  .wt-root .wt-grid {
+    grid-template-columns: 180px minmax(calc(var(--wt-day-cell-min-width) * var(--wt-day-count)), 1fr);
+  }
+
+  .wt-root .wt-employee-column {
+    width: 180px;
+  }
+}
