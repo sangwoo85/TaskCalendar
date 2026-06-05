@@ -2,102 +2,88 @@
 
 ## 목적
 
-이 문서는 `taskCalendar` 구현 코드를 유지보수할 때 주석을 어떤 기준으로 남길지 정의한다.
+이 문서는 `workTimeline` 코드를 유지보수할 때 주석을 어떤 기준으로 남길지 정의한다.
 
 ## 주석 원칙
 
 1. 무엇을 하는 코드인지보다 왜 필요한 코드인지 설명한다.
-2. 단순한 코드 해석 주석은 작성하지 않는다.
-3. 날짜 계산, 월간 segment 계산, overflow 처리, destroy 처리에는 주석을 남긴다.
-4. public method와 callback에는 JSDoc 스타일 주석을 작성한다.
-5. 복잡한 DOM 구조에는 짧은 구조 설명 주석을 작성한다.
-6. 임시 구현이나 TODO는 명확히 표시한다.
+2. 단순 코드 해석 주석은 작성하지 않는다.
+3. 날짜 계산, overlap 계산, clipping 계산에는 주석을 남긴다.
+4. 월간 segment 계산에는 주석을 남긴다.
+5. cardSection 긴 card/bar 위치 계산에는 주석을 남긴다.
+6. drag/drop 날짜 변경 처리에는 주석을 남긴다.
+7. double click 종료일 변경 처리에는 주석을 남긴다.
+8. click/double click/drag 충돌 방지 로직에는 주석을 남긴다.
+9. public method와 callback 설명에는 JSDoc 스타일 주석을 우선 사용한다.
 
 ## 주석을 남겨야 하는 영역
 
 - `getVisibleRange()`: week/month visible range 결정
-- `parseDateOnly()`, `dayDiff()`, `addDays()`: date-only 계산
-- `groupVisibleTasks()`: overlap 조건과 직원별 그룹핑
-- `buildLanes()`: 주간 task stacking
+- `isDateOnly()`, `parseDateOnly()`, `dayDiff()`, `addDays()`: date-only 계산
+- `isTaskOverlapping()`, `clipDateRange()`: 공통 overlap 조건과 visible range clipping
+- `groupVisibleTasks()`, `getVisibleTasks()`: 공통 overlap 조건을 사용하는 visible task 선별
+- `buildWeekRangeItems()`: cardSection 긴 card/bar 위치 계산
+- `buildLanes()`: 주간 timeline/cardSection lane stacking
+- `splitMonthTasks()`, `getTaskDurationDays()`: 월간 progress bar 업무와 날짜 cell 목록 업무 분리
 - `buildMonthWeekSegments()`: 월간 week row segment 계산
 - `buildMonthSegmentLanes()`: 월간 bar lane stacking
-- `renderMonthWeekRow()`: date cells layer와 task bars layer 구조
-- `renderMoreButton()`, `openMoreModal()`: overflow 표시와 기본 modal
-- `destroy()`, `unbindEvents()`: DOM/event cleanup
-
-## JSDoc 권장 대상
-
-현재 코드는 JSDoc이 많지 않다. 다음 public method에는 향후 JSDoc을 우선 추가한다.
-
-- `render()`
-- `reload()`
-- `setView(viewType)`
-- `goTo(dateText)`
-- `prev()`
-- `next()`
-- `today()`
-- `setData(employees, tasks)`
-- `setHolidays(holidays)`
-- `destroy()`
-
-Callback 설명에는 전달 인자를 명시한다.
-
-```javascript
-/**
- * 업무 bar 클릭 시 호출한다.
- *
- * @callback onTaskClick
- * @param {Object} task 원본 task object
- * @param {Object} context 표시 range와 segment context
- * @param {MouseEvent} event 클릭 이벤트
- */
-```
+- `isTaskEditable()`, `canDragTask()`, `canEditTaskEndDate()`: 외부 권한 값을 UI 동작에 반영하는 조건
+- `handleCardDrop()`, `moveTaskByDrag()`: drag/drop 날짜 변경
+- `delayTaskClick()`, `handleCardDoubleClick()`: click/double click 충돌 방지
+- `changeTaskEndDate()`: double click 종료일 변경 반영
+- `buildTaskChangePayload()`, `buildTaskClickPayload()`: callback payload 생성
+- `invokeConfiguredCallback()`: inline callback과 JSP 전역 functionName fallback 호출 순서
+- `statusClass()`: status 값과 CSS class 연결
+- `unbindEvents()`, `destroy()`: DOM/event cleanup
 
 ## 좋은 주석 예시
 
 ```javascript
-// 월간 view에서는 업무가 한 주를 넘어갈 수 있으므로,
-// 하나의 task를 week row 단위의 segment로 나누어 렌더링한다.
-function buildMonthTaskSegments(task, weeks) {
+/**
+ * 현재 표시 기간과 업무 기간이 겹치는지 확인한다.
+ * 주간/월간 모두 동일한 overlap 기준을 사용한다.
+ *
+ * 날짜는 YYYY-MM-DD date-only 문자열 기준으로 비교한다.
+ */
+function isTaskOverlapping(task, visibleStartDate, visibleEndDate) {
   ...
 }
 ```
 
 ```javascript
 /**
- * 현재 표시 기간과 업무 기간이 겹치는지 확인한다.
- * 날짜는 YYYY-MM-DD date-only 문자열을 기준으로 비교한다.
- *
- * @param {Object} task
- * @param {string} visibleStartDate
- * @param {string} visibleEndDate
- * @returns {boolean}
+ * cardSection mode에서 업무 기간을 7일 주간 grid 기준의 column 범위로 변환한다.
+ * 여러 날 업무는 날짜별 카드가 아니라 하나의 긴 card/bar로 렌더링된다.
  */
-function isTaskVisible(task, visibleStartDate, visibleEndDate) {
+function calculateWeeklyCardBarRange(task, visibleStartDate, visibleEndDate) {
   ...
 }
 ```
 
 ```javascript
-// destroy 이후 비동기 callback이나 이벤트가 DOM을 다시 만지지 않도록
-// instance에 등록한 listener를 모두 제거한다.
-this.unbindEvents();
+/**
+ * double click 시 단일 click callback이 중복 실행되지 않도록
+ * click 실행을 지연시키고 dblclick 발생 시 click timer를 취소한다.
+ */
+function bindTaskCardEvents($card, task) {
+  ...
+}
 ```
 
 ## 나쁜 주석 예시
 
 ```javascript
-// i를 1 증가시킨다.
+// i 증가
 i++;
 ```
 
 ```javascript
-// 버튼 클릭 이벤트
-$('.btn').click(function () {});
+// 버튼 클릭
+$button.on('click', function () {});
 ```
 
 ```javascript
-// task를 렌더링한다.
+// task 렌더링
 renderTask(task);
 ```
 
@@ -121,5 +107,6 @@ TODO는 임시 구현의 이유와 제거 조건을 함께 적는다.
 ## 문서와 주석의 관계
 
 - 기능 규칙은 `FEATURE_SPEC.md`에 먼저 정리한다.
+- JSON 계약은 `API_SPEC.md`에 둔다.
 - DOM 구조와 CSS 원칙은 `DESIGN_GUIDE.md`와 `ARCHITECTURE.md`에 둔다.
 - 코드 주석은 해당 규칙을 왜 코드에서 특별히 처리하는지 짧게 연결한다.

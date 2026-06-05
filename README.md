@@ -33,13 +33,20 @@ $('#taskCalendar').workTimeline({
 - jQuery plugin 방식 초기화
 - direct data injection 방식 지원
 - 주간 view 직원별 timeline
+- version2 주간 `cardSection` 실험 모드
+- cardSection 업무 card/bar drag로 시작일 변경
+- `enableTaskDrag`로 cardSection drag 시작일 변경 활성/비활성
+- cardSection 업무 card/bar double click으로 종료일 변경
+- `canEdit`, `defaultTaskEditable` 기반 task별 수정 가능 여부 제어
+- cardSection 장기 업무 range card/bar 표시
 - 주간 view에서 업무 없는 직원 row 숨김
 - 월간 view 일반 calendar grid
-- 월간 view week row 단위 연속 업무 bar
+- 월간 view week row 단위 연속 progress bar
+- 월간 progress bar 업무와 날짜 cell 목록 업무 중복 표시 방지
 - 업무 기간 overlap 표시
 - 주간 task stacking
 - 월간 task bar lane stacking
-- 월간 `... N` overflow modal
+- 날짜 cell 기준 월간 `... N` overflow modal
 - 업무 클릭 callback 및 `taskClickFunctionName`
 - 휴일/대체휴일 표시
 - 일요일/토요일 색상 구분
@@ -76,9 +83,15 @@ $('#taskCalendar').workTimeline({
   }
 
   $('#taskCalendar').workTimeline({
-    viewType: 'month',
+    viewType: 'week',
+    weeklyDisplayMode: 'cardSection',
+    enableTaskDrag: true,
+    enableTaskEndDateEdit: true,
+    defaultTaskEditable: false,
+    monthRangeBarMinDays: 2,
     taskClickFunctionName: 'openTaskDetail',
-    maxVisibleTaskBarsPerWeek: 3,
+    taskMoveFunctionName: 'onTaskMoveDummy',
+    taskEndDateChangeFunctionName: 'onTaskEndDateChangeDummy',
     employees: demoEmployees,
     tasks: demoTasks,
     holidays: demoHolidays
@@ -106,6 +119,10 @@ $('#taskCalendar').workTimeline({
 - 모바일 최적화
 - 직원 row 항상 표시 option
 - TypeScript 타입 정의
+
+## 저장 책임
+
+`workTimeline`은 drag/drop 시작일 변경이나 double click 종료일 변경 후 서버 저장 API를 직접 호출하지 않는다. 컴포넌트는 `onTaskMove`, `taskMoveFunctionName`, `onTaskEndDateChange`, `taskEndDateChangeFunctionName` callback만 호출하며, 실제 DB 저장과 서버 권한 재검증은 사용하는 업무 시스템에서 처리해야 한다.
 
 ## 향후 개선 예정
 

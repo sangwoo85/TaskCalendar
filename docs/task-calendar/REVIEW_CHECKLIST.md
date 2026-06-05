@@ -51,6 +51,57 @@ displayEndDate = min(task.endDate, visibleEndDate)
 - [ ] 기준일이 속한 주의 visible range가 계산된다.
 - [ ] 기본 주 시작일은 월요일이다.
 - [ ] header에 7일이 표시된다.
+- [ ] `weeklyDisplayMode` 기본값은 `timeline`이다.
+- [ ] `weeklyDisplayMode: 'timeline'`에서 기존 직원별 timeline이 유지된다.
+- [ ] `weeklyDisplayMode: 'cardSection'`에서 7개 날짜 섹션이 표시된다.
+- [ ] `enableTaskDrag` 기본값은 `true`이다.
+- [ ] `enableTaskEndDateEdit` 기본값은 `true`이다.
+- [ ] `defaultTaskEditable` 기본값은 `false`이다.
+- [ ] cardSection 날짜 column 위에 업무 기간을 가로지르는 card/bar가 표시된다.
+- [ ] 하루짜리 업무는 1일 column만 차지하는 card/bar로 표시된다.
+- [ ] 여러 날 업무는 하나의 DOM card/bar가 `displayStartDate~displayEndDate`를 span한다.
+- [ ] cardSection 업무 card/bar에는 업무명, 부서명, 담당자명, 시작일, 종료일, 상태가 표시된다.
+- [ ] cardSection 업무 card/bar 클릭 시 `onTaskClick` 또는 `taskClickFunctionName`이 동작한다.
+- [ ] `enableTaskDrag: true`에서 cardSection 업무 card/bar는 드래그 가능한 cursor를 표시한다.
+- [ ] `enableTaskDrag: true`에서 업무 card/bar를 다른 날짜 섹션으로 drop하면 새 시작일로 변경된다.
+- [ ] `enableTaskDrag: true`에서 drag 이동 시 기존 기간이 유지되어 `newEndDate`가 자동 계산된다.
+- [ ] `enableTaskDrag: true`에서 drag 완료 후 `onTaskMove` 또는 `taskMoveFunctionName`이 payload와 함께 호출된다.
+- [ ] `enableTaskDrag: false`에서 업무 card/bar에 `draggable` 속성이 부여되지 않는다.
+- [ ] `enableTaskDrag: false`에서 업무 card/bar는 drag 가능한 cursor를 표시하지 않는다.
+- [ ] `enableTaskDrag: false`에서 drop target hover 스타일이 동작하지 않는다.
+- [ ] `enableTaskDrag: false`에서 시작일 변경, 내부 task 데이터 변경, `onTaskMove`/`taskMoveFunctionName` 호출이 발생하지 않는다.
+- [ ] `enableTaskDrag: false`에서도 업무 click 상세가 동작한다.
+- [ ] `enableTaskDrag: false`에서도 double click 종료일 변경이 동작한다.
+- [ ] 사용자 권한 판단은 외부 업무 시스템에서 수행하고 task별 `canEdit`과 전역 option으로 전달한다.
+- [ ] `canEdit=true` 업무는 drag 가능하다.
+- [ ] `canEdit=true` 업무는 double click 종료일 변경 가능하다.
+- [ ] `canEdit=false` 업무는 drag 불가능하다.
+- [ ] `canEdit=false` 업무는 double click 종료일 변경 불가능하다.
+- [ ] `canEdit=false` 업무도 click 상세 보기는 가능하다.
+- [ ] `canEdit=false` 업무에서 `onTaskMove`가 호출되지 않는다.
+- [ ] `canEdit=false` 업무에서 `onTaskEndDateChange`가 호출되지 않는다.
+- [ ] `canEdit`이 없을 때 `defaultTaskEditable` 옵션이 적용된다.
+- [ ] 수정 불가 업무는 `wt-task-readonly` class로 구분된다.
+- [ ] `API_SPEC.md`에 `canEdit` 필드가 문서화되어 있다.
+- [ ] 서버 권한 재검증 필요성이 문서화되어 있다.
+- [ ] taskCalendar는 서버 저장을 직접 수행하지 않는다.
+- [ ] 같은 날짜에 drop하면 move callback이 호출되지 않는다.
+- [ ] drag 후 업무 상세 click callback이 중복 실행되지 않는다.
+- [ ] cardSection 업무 card/bar를 double click하면 종료일 변경 modal이 열린다.
+- [ ] 종료일 변경 modal에 업무명, 시작일, 현재 종료일, 새 종료일 입력란이 표시된다.
+- [ ] 새 종료일이 `YYYY-MM-DD` 형식이 아니면 변경하지 않고 경고를 표시한다.
+- [ ] 새 종료일이 시작일보다 빠르면 변경하지 않고 경고를 표시한다.
+- [ ] 종료일 변경 성공 후 내부 `task.endDate`가 갱신되고 화면이 다시 렌더링된다.
+- [ ] 종료일 변경 성공 후 `onTaskEndDateChange` 또는 `taskEndDateChangeFunctionName`이 호출된다.
+- [ ] double click 시 업무 상세 click callback이 중복 실행되지 않는다.
+- [ ] drag와 double click 기능이 서로 방해하지 않는다.
+- [ ] card/bar는 visible range 안에서 `displayStartDate`, `displayEndDate`로 clipping된다.
+- [ ] 이전 주에 시작한 업무는 `visibleStartDate`부터 clipped card/bar로 표시된다.
+- [ ] 다음 주까지 이어지는 업무는 `visibleEndDate`까지 clipped card/bar로 표시된다.
+- [ ] 기간이 겹치는 card/bar는 서로 다른 lane에 표시된다.
+- [ ] card/bar decorative arrow는 카드 click, drag, double click을 방해하지 않는다.
+- [ ] drag 후 card/bar 위치가 새 시작일/종료일 기준으로 다시 계산된다.
+- [ ] double click 종료일 변경 후 card/bar 길이가 새 종료일 기준으로 다시 계산된다.
 - [ ] `prev`, `next`, `today` 이동이 주 단위로 동작한다.
 - [ ] 주를 넘어가는 업무가 overlap 규칙에 따라 잘려 표시된다.
 - [ ] 해당 주와 겹치는 업무가 없는 직원은 표시되지 않는다.
@@ -74,11 +125,22 @@ displayEndDate = min(task.endDate, visibleEndDate)
 - [ ] 월 이전에 시작한 업무는 월 시작일 기준으로 잘려 표시된다.
 - [ ] 월 이후까지 이어지는 업무는 월 마지막 날 기준으로 잘려 표시된다.
 - [ ] week row를 넘어가는 업무는 week row별 segment bar로 나뉘어 표시된다.
-- [ ] 하루짜리 업무도 1일 span의 bar로 표시된다.
+- [ ] 월간 view에서 progress bar 업무가 날짜 cell 목록에 중복 표시되지 않는다.
+- [ ] 여러 날짜 업무는 progress bar로만 표시된다.
+- [ ] 하루짜리 업무는 날짜 cell 목록에 표시된다.
+- [ ] progress bar 업무는 progress bar 클릭으로 상세 확인 가능하다.
+- [ ] `monthRangeBarMinDays` 옵션이 기준대로 동작한다.
 - [ ] 월과 겹치지 않는 업무는 어떤 날짜 칸에도 표시되지 않는다.
-- [ ] week row의 업무 bar lane이 `maxVisibleTaskBarsPerWeek`보다 많으면 `... N`으로 숨겨진다.
-- [ ] `... N` 클릭 시 해당 week row의 숨겨진 업무 목록 modal/popup이 열린다.
-- [ ] modal/popup에는 날짜 또는 week range, 전체 업무 개수, 숨겨진 업무의 업무명, 부서명, 직원명, 시작일, 종료일, 상태가 표시된다.
+- [ ] 월간 view에서 `... N`은 날짜 cell별로 표시된다.
+- [ ] `maxVisibleTasksPerDay`는 일자별 최대 표시 개수로 동작한다.
+- [ ] 특정 날짜에 업무가 6개이고 `maxVisibleTasksPerDay`가 3이면 `... 3`이 표시된다.
+- [ ] `... N` 클릭 시 해당 날짜의 숨김 업무만 modal에 표시된다.
+- [ ] `... N` 계산에서 progress bar 업무는 제외된다.
+- [ ] `... N` modal에 progress bar 업무가 포함되지 않는다.
+- [ ] 같은 주의 다른 날짜 업무가 modal에 섞이지 않는다.
+- [ ] 주 전체 업무가 많다는 이유만으로 `... N`이 표시되지 않는다.
+- [ ] 휴일명과 `... N` 표시가 서로 겹치지 않는다.
+- [ ] modal/popup에는 클릭한 날짜, 전체 업무 개수, 숨겨진 업무의 업무명, 부서명, 직원명, 시작일, 종료일, 상태가 표시된다.
 - [ ] modal/popup은 닫기 버튼으로 닫을 수 있고 내부 스크롤이 가능하다.
 - [ ] today 날짜 칸이 구분되어 표시된다.
 - [ ] 월간 업무 bar 클릭 시 `onTaskClick` 또는 `taskClickFunctionName`이 동작한다.
@@ -107,7 +169,7 @@ displayEndDate = min(task.endDate, visibleEndDate)
 ## API loading
 
 - [ ] `apiUrl` 방식 실제 데이터 로딩은 현재 미구현임을 문서와 화면에서 명확히 표시한다.
-- [ ] API loading 구현 후에는 `apiUrl` 방식으로 데이터 로딩이 가능하다.
+- [ ] 향후 API loading 구현 시에는 `apiUrl` 방식으로 데이터 로딩이 가능해야 한다.
 - [ ] request parameter에 `viewType`, `startDate`, `endDate`가 포함된다.
 - [ ] API 응답의 `employees`, `tasks`, `range`를 검증한다.
 - [ ] loading 상태가 표시된다.
@@ -130,8 +192,12 @@ displayEndDate = min(task.endDate, visibleEndDate)
 - [ ] `goTo('YYYY-MM-DD')`가 지정 날짜가 포함된 range로 이동한다.
 - [ ] `prev()`, `next()`, `today()`가 viewType에 맞게 동작한다.
 - [ ] `destroy()` 후에는 click, scroll, resize event가 남지 않는다.
-- [ ] `onTaskClick`이 task와 context를 전달한다.
+- [ ] `onTaskClick`이 첫 번째 인자로 기존 `task`를 전달하고 두 번째 인자로 click payload를 전달한다.
+- [ ] `onTaskMove`가 공통 식별 필드, `durationDays`, `moveMode`, `changeType: 'move'`, `source: 'cardSection'`을 포함한 keepDuration payload를 전달한다.
+- [ ] `onTaskEndDateChange`가 공통 식별 필드, 변경 전후 날짜, `changeType: 'endDate'`, `source: 'cardSection'`을 포함한 payload를 전달한다.
 - [ ] `taskClickFunctionName`이 지정되고 `onTaskClick`이 없으면 전역 함수가 호출된다.
+- [ ] `taskMoveFunctionName`이 지정되고 `onTaskMove`가 없으면 전역 함수가 호출된다.
+- [ ] `taskEndDateChangeFunctionName`이 지정되고 `onTaskEndDateChange`가 없으면 전역 함수가 호출된다.
 - [ ] `onMoreClick`이 월간 `... N` 클릭 시 호출된다.
 - [ ] `onEmployeeClick`이 employee를 전달한다.
 - [ ] `onRangeChange`가 이동 또는 view 변경 후 호출된다.
@@ -165,3 +231,12 @@ displayEndDate = min(task.endDate, visibleEndDate)
 - [ ] `ARCHITECTURE.md`의 월간 bar layer 설명이 현재 DOM 구조와 일치한다.
 - [ ] `COMMENT_GUIDE.md`의 주석 기준이 코드 수정 시 참고 가능하다.
 - [ ] 미구현 기능은 문서에서 구현 완료처럼 표현하지 않는다.
+
+## Code cleanup
+
+- [ ] callback/functionName fallback 호출 로직이 중복 구현되지 않는다.
+- [ ] overlap과 clipping 규칙은 공통 helper를 사용하며 주간/월간에서 같은 기준을 유지한다.
+- [ ] status CSS class 생성 규칙은 한 곳에서 관리한다.
+- [ ] 월간 progress bar 업무와 날짜 cell 목록 업무 분리 규칙이 중복 구현되지 않는다.
+- [ ] 임시 `console.log`, 디버깅 alert, 사용하지 않는 테스트 코드가 남아 있지 않다.
+- [ ] 정리 작업 후 `node --check src/work-timeline.js`를 통과한다.

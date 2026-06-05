@@ -281,6 +281,405 @@
   white-space: nowrap;
 }
 
+.wt-root .wt-week-card-sections {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--wt-day-count), minmax(160px, 1fr));
+  gap: 0;
+  overflow: auto;
+  min-width: calc(160px * var(--wt-day-count));
+  min-height: calc(112px + (var(--wt-week-lane-count, 1) * 76px));
+  border: 1px solid var(--wt-border-color);
+  border-radius: 14px;
+  background: var(--wt-surface-color);
+}
+
+.wt-root .wt-week-card-day {
+  position: relative;
+  z-index: 1;
+  grid-row: 1;
+  min-height: calc(112px + (var(--wt-week-lane-count, 1) * 76px));
+  padding: 10px;
+  border-right: 1px solid var(--wt-soft-border-color);
+  background: #ffffff;
+}
+
+.wt-root .wt-week-card-day:last-child,
+.wt-root .wt-week-card-day:last-of-type {
+  border-right: 0;
+}
+
+.wt-root .wt-week-card-day.wt-date-sunday,
+.wt-root .wt-week-card-day.wt-date-holiday,
+.wt-root .wt-week-card-day.wt-date-substitute-holiday {
+  background: #fff7f8;
+}
+
+.wt-root .wt-week-card-day.wt-date-saturday {
+  background: #f3f8ff;
+}
+
+.wt-root .wt-week-card-day-today {
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.34);
+}
+
+.wt-root .wt-week-card-day-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+  margin-bottom: 7px;
+}
+
+.wt-root .wt-week-card-day-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.wt-root .wt-week-card-weekday {
+  color: var(--wt-muted-color);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.wt-root .wt-week-card-date {
+  color: var(--wt-text-color);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.wt-root .wt-week-card-day.wt-date-sunday .wt-week-card-weekday,
+.wt-root .wt-week-card-day.wt-date-sunday .wt-week-card-date,
+.wt-root .wt-week-card-day.wt-date-holiday .wt-week-card-weekday,
+.wt-root .wt-week-card-day.wt-date-holiday .wt-week-card-date,
+.wt-root .wt-week-card-day.wt-date-substitute-holiday .wt-week-card-weekday,
+.wt-root .wt-week-card-day.wt-date-substitute-holiday .wt-week-card-date {
+  color: #c62828;
+}
+
+.wt-root .wt-week-card-day.wt-date-saturday .wt-week-card-weekday,
+.wt-root .wt-week-card-day.wt-date-saturday .wt-week-card-date {
+  color: #1a5fb4;
+}
+
+.wt-root .wt-week-card-count {
+  flex: 0 0 auto;
+  min-width: 24px;
+  padding: 2px 7px;
+  border: 1px solid var(--wt-soft-border-color);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--wt-muted-color);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.wt-root .wt-week-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.wt-root .wt-week-range-empty {
+  position: relative;
+  z-index: 2;
+  grid-row: 1;
+  grid-column: 1 / -1;
+  align-self: start;
+  margin: 74px 12px 0;
+}
+
+.wt-root .wt-week-task-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-height: 96px;
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(36, 48, 66, 0.06);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.wt-root .wt-week-range-bar {
+  position: absolute;
+  z-index: 2;
+  width: auto;
+  min-width: 0;
+  min-height: 58px;
+  margin: 0;
+  padding: 9px 32px 9px 10px;
+}
+
+.wt-root .wt-week-range-bar::before {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 16px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  content: "";
+  opacity: 0.65;
+  transform: translateY(-50%);
+}
+
+.wt-root .wt-week-range-bar::after {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid currentColor;
+  content: "";
+  opacity: 0.65;
+  transform: translateY(-50%);
+}
+
+.wt-root .wt-week-range-bar-single {
+  padding-right: 10px;
+}
+
+.wt-root .wt-week-range-bar-single::before,
+.wt-root .wt-week-range-bar-single::after {
+  display: none;
+}
+
+.wt-root .wt-week-range-bar-start {
+  border-left-style: dashed;
+}
+
+.wt-root .wt-week-range-bar-start .wt-week-task-period::before {
+  content: "← ";
+}
+
+.wt-root .wt-week-range-bar-end .wt-week-task-period::after {
+  content: " →";
+}
+
+.wt-root .wt-week-range-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr) auto;
+  grid-template-areas:
+    "title owner status"
+    "period period period";
+  gap: 3px 8px;
+  align-items: center;
+  min-width: 0;
+  pointer-events: none;
+}
+
+.wt-root .wt-week-task-card.wt-task-drag-enabled {
+  cursor: grab;
+}
+
+.wt-root .wt-week-task-card.wt-task-drag-enabled:active {
+  cursor: grabbing;
+}
+
+.wt-root .wt-week-task-card.wt-task-drag-disabled {
+  cursor: pointer;
+}
+
+.wt-root .wt-week-task-card.wt-task-readonly {
+  border-style: dashed;
+  opacity: 0.78;
+}
+
+.wt-root .wt-week-task-card.wt-task-readonly:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 5px 14px rgba(36, 48, 66, 0.08);
+}
+
+.wt-root .wt-week-task-card.wt-task-editable {
+  opacity: 1;
+}
+
+.wt-root .wt-week-task-card.wt-card-dragging {
+  opacity: 0.55;
+  transform: scale(0.99);
+}
+
+.wt-root .wt-week-card-day.wt-drop-target-active {
+  background: var(--wt-primary-soft-color);
+  box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.28);
+}
+
+.wt-root .wt-week-task-card:hover {
+  border-color: #9ec5fe;
+  box-shadow: 0 7px 18px rgba(36, 48, 66, 0.12);
+  transform: translateY(-1px);
+}
+
+.wt-root .wt-week-task-card:focus {
+  outline: 2px solid #1d6fb8;
+  outline-offset: 1px;
+}
+
+.wt-root .wt-week-task-title,
+.wt-root .wt-week-task-owner,
+.wt-root .wt-week-task-period,
+.wt-root .wt-week-task-status {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wt-root .wt-week-task-title {
+  grid-area: title;
+  color: var(--wt-text-color);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.wt-root .wt-week-task-owner,
+.wt-root .wt-week-task-period {
+  color: var(--wt-muted-color);
+  font-size: 12px;
+}
+
+.wt-root .wt-week-task-owner {
+  grid-area: owner;
+}
+
+.wt-root .wt-week-task-period {
+  grid-area: period;
+}
+
+.wt-root .wt-week-task-status {
+  grid-area: status;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.wt-root .wt-week-card-empty {
+  min-height: 72px;
+  padding: 18px 8px;
+  border: 1px dashed var(--wt-soft-border-color);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--wt-muted-color);
+  font-size: 12px;
+  text-align: center;
+}
+
+.wt-root .wt-end-date-modal-backdrop {
+  position: fixed;
+  z-index: 10000;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.32);
+}
+
+.wt-root .wt-end-date-modal-card {
+  width: min(420px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--wt-border-color);
+  border-radius: 18px;
+  background: var(--wt-surface-color);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+}
+
+.wt-root .wt-end-date-modal-title {
+  padding: 13px 15px;
+  border-bottom: 1px solid var(--wt-border-color);
+  background: var(--wt-header-color);
+  color: var(--wt-text-color);
+  font-weight: 800;
+}
+
+.wt-root .wt-end-date-modal-body {
+  padding: 14px 15px;
+}
+
+.wt-root .wt-end-date-modal-row {
+  overflow: hidden;
+  margin-bottom: 7px;
+  color: var(--wt-muted-color);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wt-root .wt-end-date-modal-label {
+  display: block;
+  margin: 12px 0 6px;
+  color: var(--wt-text-color);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.wt-root .wt-end-date-modal-input {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--wt-border-color);
+  border-radius: 10px;
+  color: var(--wt-text-color);
+  font: inherit;
+}
+
+.wt-root .wt-end-date-modal-input:focus {
+  border-color: #9ec5fe;
+  outline: 2px solid rgba(59, 130, 246, 0.18);
+}
+
+.wt-root .wt-end-date-modal-error {
+  min-height: 18px;
+  margin-top: 7px;
+  color: #c62828;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.wt-root .wt-end-date-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 12px 15px;
+  border-top: 1px solid var(--wt-soft-border-color);
+  background: #fbfdff;
+}
+
+.wt-root .wt-end-date-modal-button {
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 1px solid var(--wt-border-color);
+  border-radius: 999px;
+  background: var(--wt-surface-color);
+  color: var(--wt-text-color);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wt-root .wt-end-date-modal-apply {
+  border-color: var(--wt-primary-color);
+  background: var(--wt-primary-color);
+  color: #ffffff;
+}
+
 .wt-root .wt-task-status-todo {
   border-color: #cbd5e1;
   background: #f1f5f9;
@@ -363,7 +762,7 @@
 
 .wt-root .wt-month-week-row {
   display: grid;
-  min-height: calc(58px + (var(--wt-month-visible-lanes, 1) * 28px) + 12px);
+  min-height: calc(58px + (var(--wt-month-day-task-slots, 1) * 26px) + (var(--wt-month-visible-lanes, 1) * 28px) + 12px);
   border-bottom: 1px solid var(--wt-border-color);
   background: var(--wt-surface-color);
 }
@@ -379,7 +778,7 @@
 }
 
 .wt-root .wt-month-day {
-  min-height: calc(58px + (var(--wt-month-visible-lanes, 1) * 28px) + 12px);
+  min-height: calc(58px + (var(--wt-month-day-task-slots, 1) * 26px) + (var(--wt-month-visible-lanes, 1) * 28px) + 12px);
   padding: 9px;
   overflow: hidden;
   border-right: 1px solid var(--wt-soft-border-color);
@@ -440,12 +839,43 @@
   font-weight: 700;
 }
 
+.wt-root .wt-month-day-task-list {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.wt-root .wt-month-day-task {
+  display: block;
+  width: 100%;
+  min-height: 22px;
+  padding: 3px 7px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.wt-root .wt-month-day-task-owner {
+  font-weight: 700;
+}
+
+.wt-root .wt-month-day-task-title {
+  font-weight: 400;
+}
+
 .wt-root .wt-month-week-bars {
   grid-auto-rows: 26px;
   gap: 4px 0;
   align-content: start;
-  min-height: calc(58px + (var(--wt-month-visible-lanes, 1) * 28px) + 12px);
-  padding: 58px 6px 8px;
+  min-height: calc(58px + (var(--wt-month-day-task-slots, 1) * 26px) + (var(--wt-month-visible-lanes, 1) * 28px) + 12px);
+  padding: calc(58px + (var(--wt-month-day-task-slots, 1) * 26px)) 6px 8px;
   background: transparent;
   pointer-events: none;
 }
@@ -497,12 +927,9 @@
   font-weight: 700;
 }
 
-.wt-root .wt-month-week-more {
-  grid-column: 1 / -1;
-  width: auto;
-  max-width: 110px;
-  margin: 0 2px;
-  justify-self: start;
+.wt-root .wt-month-day-more,
+.wt-root .wt-month-cell-more {
+  width: 100%;
   pointer-events: auto;
 }
 

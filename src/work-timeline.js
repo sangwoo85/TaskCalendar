@@ -15,6 +15,10 @@
     visibleEndDate: null,
     todayDate: null,
     weekStartsOn: 1,
+    weeklyDisplayMode: 'timeline',
+    enableTaskDrag: true,
+    enableTaskEndDateEdit: true,
+    defaultTaskEditable: false,
     employees: [],
     tasks: [],
     holidays: [],
@@ -23,7 +27,10 @@
     dayCellMinWidth: 96,
     maxVisibleTasksPerDay: 3,
     maxVisibleTaskBarsPerWeek: 3,
+    monthRangeBarMinDays: 2,
     taskClickFunctionName: null,
+    taskMoveFunctionName: null,
+    taskEndDateChangeFunctionName: null,
     labels: {
       employee: '직원',
       prev: '이전',
@@ -32,6 +39,7 @@
       week: '주간',
       month: '월간',
       empty: '표시할 직원 또는 업무가 없습니다.',
+      emptyDay: '시작 업무 없음',
       apiPending: 'API loading은 구조만 준비되어 있습니다.',
       monthPending: 'Monthly view는 구조만 준비되어 있습니다.'
     },
@@ -39,6 +47,8 @@
     onRangeChange: null,
     onDataLoaded: null,
     onTaskClick: null,
+    onTaskMove: null,
+    onTaskEndDateChange: null,
     onMoreClick: null,
     onEmployeeClick: null,
     onError: null
@@ -54,11 +64,17 @@
     this.viewType = this.options.viewType === 'month' ? 'month' : 'week';
     this.currentDate = this.options.currentDate || this.options.todayDate || formatToday();
     this.handlers = [];
+    this.dragState = null;
+    this.taskClickTimer = null;
+    this.suppressTaskClickUntil = 0;
     this.destroyed = false;
     this.render();
     call(this.options.onInit, this, [this]);
   }
 
+  /**
+   * Rebuild the current view from in-memory data and options.
+   */
   WorkTimeline.prototype.render = function () {
     if (this.destroyed) {
       return this;
@@ -76,12 +92,22 @@
       return this;
     }
 
-    this.element.appendChild(this.viewType === 'month' ? this.renderMonthCalendar() : this.renderTimelineGrid());
+    if (this.viewType === 'month') {
+      this.element.appendChild(this.renderMonthCalendar());
+    } else if (this.getWeeklyDisplayMode() === 'cardSection') {
+      this.element.appendChild(this.renderWeekCardSections());
+    } else {
+      this.element.appendChild(this.renderTimelineGrid());
+    }
     this.bindToolbarEvents();
     this.bindContentEvents();
     return this;
   };
 
+  /**
+   * Rerender direct data mode.
+   * apiUrl based fetching is intentionally left pending in the current MVP.
+   */
   WorkTimeline.prototype.reload = function () {
     if (!this.options.apiUrl) {
       return this.render();
@@ -89,6 +115,10 @@
     return this.fail('API_LOADING_PENDING', this.options.labels.apiPending);
   };
 
+  /**
+   * Change view without changing direct data.
+   * Consumers that need server data should load it from onRangeChange.
+   */
   WorkTimeline.prototype.setView = function (viewType) {
     this.viewType = viewType === 'month' ? 'month' : 'week';
     this.render();
@@ -96,6 +126,10 @@
     return this;
   };
 
+  /**
+   * Move the current view to a date-only value.
+   * The fixed visible range is cleared so week/month range can be recalculated.
+   */
   WorkTimeline.prototype.goTo = function (dateText) {
     if (!isDateOnly(dateText)) {
       return this.fail('INVALID_DATE_FORMAT', 'date must be YYYY-MM-DD.');
@@ -108,16 +142,25 @@
     return this;
   };
 
+  /**
+   * Move to previous week or month depending on current view.
+   */
   WorkTimeline.prototype.prev = function () {
     this.move(this.viewType === 'month' ? -1 : -7);
     return this;
   };
 
+  /**
+   * Move to next week or month depending on current view.
+   */
   WorkTimeline.prototype.next = function () {
     this.move(this.viewType === 'month' ? 1 : 7);
     return this;
   };
 
+  /**
+   * Move to todayDate and let the view recalculate its visible range.
+   */
   WorkTimeline.prototype.today = function () {
     this.currentDate = this.options.todayDate || formatToday();
     this.options.visibleStartDate = null;
@@ -135,6 +178,10 @@
     call(this.options.onRangeChange, this, [this.getRangeContext(), this]);
   };
 
+  /**
+   * Replace direct data and rerender the current view.
+   * This does not call a server API; API loading is still pending.
+   */
   WorkTimeline.prototype.setData = function (employees, tasks) {
     this.employees = arrayOrEmpty(employees);
     this.tasks = arrayOrEmpty(tasks);
@@ -143,12 +190,18 @@
     return this;
   };
 
+  /**
+   * Replace holiday data and rerender date headers/cells.
+   */
   WorkTimeline.prototype.setHolidays = function (holidays) {
     this.holidays = normalizeHolidays(holidays);
     this.render();
     return this;
   };
 
+  /**
+   * Remove DOM and instance event handlers created by this plugin instance.
+   */
   WorkTimeline.prototype.destroy = function () {
     this.destroyed = true;
     this.unbindEvents();
@@ -167,6 +220,7 @@
       return makeRange('month', start, end);
     }
 
+    // Fixed ranges are mainly for JSP/demo verification where the exact week must stay stable.
     if (isDateOnly(this.options.visibleStartDate) && isDateOnly(this.options.visibleEndDate)) {
       return makeRange('week', this.options.visibleStartDate, this.options.visibleEndDate);
     }
@@ -182,6 +236,10 @@
       startDate: this.range.startDate,
       endDate: this.range.endDate
     };
+  };
+
+  WorkTimeline.prototype.getWeeklyDisplayMode = function () {
+    return this.options.weeklyDisplayMode === 'cardSection' ? 'cardSection' : 'timeline';
   };
 
   WorkTimeline.prototype.renderToolbar = function () {
@@ -251,6 +309,62 @@
     return grid;
   };
 
+  WorkTimeline.prototype.renderWeekCardSections = function () {
+    if (!this.tasks.length) {
+      return this.renderState('wt-state-empty', this.options.labels.empty);
+    }
+
+    var wrap = el('div', 'wt-week-card-sections');
+    var today = this.options.todayDate || formatToday();
+    var holidayMap = buildHolidayMap(this.holidays);
+    var employeeMap = buildEmployeeMap(this.employees);
+    var rangeItems = buildWeekRangeItems(this.tasks, this.range);
+    var lanes = buildLanes(rangeItems);
+    var flatItems = flattenLanes(lanes);
+
+    wrap.style.setProperty('--wt-day-count', this.range.days.length);
+    wrap.style.setProperty('--wt-week-lane-count', String(Math.max(lanes.length, 1)));
+
+    for (var i = 0; i < this.range.days.length; i += 1) {
+      var dateText = this.range.days[i];
+      wrap.appendChild(this.renderWeekCardDay(dateText, countWeekItemsOnDate(flatItems, dateText), today, holidayMap));
+    }
+
+    if (!flatItems.length) {
+      wrap.appendChild(el('div', 'wt-week-card-empty wt-week-range-empty', this.options.labels.empty));
+    }
+
+    for (var laneIndex = 0; laneIndex < lanes.length; laneIndex += 1) {
+      for (var taskIndex = 0; taskIndex < lanes[laneIndex].length; taskIndex += 1) {
+        wrap.appendChild(renderWeekRangeBar(lanes[laneIndex][taskIndex], laneIndex, employeeMap, this.range, this.canDragTask(lanes[laneIndex][taskIndex].task), this.isTaskEditable(lanes[laneIndex][taskIndex].task)));
+      }
+    }
+
+    return wrap;
+  };
+
+  WorkTimeline.prototype.renderWeekCardDay = function (dateText, taskCount, today, holidayMap) {
+    var info = parseDateOnly(dateText);
+    var holiday = holidayMap[dateText];
+    var className = 'wt-week-card-day wt-week-day-section wt-week-day-drop-target ' + getDateClass(info.weekday) + getHolidayClass(holiday) + (dateText === today ? ' wt-week-card-day-today' : '');
+    var day = el('section', className);
+    var header = el('div', 'wt-week-card-day-header');
+    var title = el('div', 'wt-week-card-day-title');
+
+    day.setAttribute('data-wt-date', dateText);
+    title.appendChild(el('span', 'wt-week-card-weekday', weekdayLabel(info.weekday)));
+    title.appendChild(el('span', 'wt-week-card-date', String(info.month) + '/' + String(info.day)));
+    header.appendChild(title);
+    header.appendChild(el('span', 'wt-week-card-count', String(taskCount)));
+    day.appendChild(header);
+
+    if (holiday) {
+      day.appendChild(renderHolidayName(holiday));
+    }
+
+    return day;
+  };
+
   WorkTimeline.prototype.renderMonthCalendar = function () {
     if (!this.tasks.length) {
       return this.renderState('wt-state-empty', this.options.labels.empty);
@@ -261,6 +375,7 @@
     var grid = el('div', 'wt-month-grid');
     var today = this.options.todayDate || formatToday();
     var tasks = getVisibleTasks(this.tasks, this.range);
+    var monthTaskGroups = splitMonthTasks(tasks, this.options.monthRangeBarMinDays);
     var holidayMap = buildHolidayMap(this.holidays);
     var calendarDays = buildMonthCalendarDays(this.range, this.options.weekStartsOn);
     var weekdayStart = this.options.weekStartsOn === 0 ? 0 : 1;
@@ -271,7 +386,7 @@
     }
 
     for (var j = 0; j < calendarDays.length; j += 7) {
-      grid.appendChild(this.renderMonthWeekRow(calendarDays.slice(j, j + 7), tasks, today, holidayMap));
+      grid.appendChild(this.renderMonthWeekRow(calendarDays.slice(j, j + 7), monthTaskGroups.rangeTasks, monthTaskGroups.dayListTasks, today, holidayMap));
     }
 
     month.appendChild(header);
@@ -279,22 +394,22 @@
     return month;
   };
 
-  WorkTimeline.prototype.renderMonthWeekRow = function (weekDays, visibleTasks, today, holidayMap) {
+  WorkTimeline.prototype.renderMonthWeekRow = function (weekDays, rangeTasks, dayListTasks, today, holidayMap) {
     var row = el('div', 'wt-month-week-row');
     var days = el('div', 'wt-month-week-days');
     var bars = el('div', 'wt-month-week-bars');
-    var segments = buildMonthWeekSegments(visibleTasks, weekDays, this.range);
+    var segments = buildMonthWeekSegments(rangeTasks, weekDays, this.range);
     var lanes = buildMonthSegmentLanes(segments);
-    var maxVisible = Math.max(Number(this.options.maxVisibleTaskBarsPerWeek) || Number(this.options.maxVisibleTasksPerDay) || 3, 0);
+    var maxVisible = Math.max(Number(this.options.maxVisibleTaskBarsPerWeek) || 3, 0);
+    var maxDayTaskSlots = Math.max(Number(this.options.maxVisibleTasksPerDay) || 3, 0) + 1;
     var visibleLaneCount = Math.min(lanes.length, maxVisible);
-    var allTasks = uniqueTasksFromSegments(segments);
-    var hiddenTasks = uniqueTasksFromSegments(flattenLanes(lanes.slice(maxVisible)));
-    var renderedLaneCount = visibleLaneCount + (hiddenTasks.length ? 1 : 0);
+    var renderedLaneCount = visibleLaneCount;
 
     row.style.setProperty('--wt-month-visible-lanes', Math.max(renderedLaneCount, 1));
+    row.style.setProperty('--wt-month-day-task-slots', String(maxDayTaskSlots));
 
     for (var i = 0; i < weekDays.length; i += 1) {
-      days.appendChild(this.renderMonthDay(weekDays[i], today, holidayMap));
+      days.appendChild(this.renderMonthDay(weekDays[i], today, holidayMap, dayListTasks));
     }
 
     for (var laneIndex = 0; laneIndex < visibleLaneCount; laneIndex += 1) {
@@ -303,27 +418,36 @@
       }
     }
 
-    if (hiddenTasks.length) {
-      var moreButton = renderMoreButton(formatWeekRange(weekDays, this.range), hiddenTasks, allTasks, null, 'wt-month-week-more');
-      moreButton.style.gridRow = (visibleLaneCount + 1);
-      bars.appendChild(moreButton);
-    }
-
     row.appendChild(days);
     row.appendChild(bars);
     return row;
   };
 
-  WorkTimeline.prototype.renderMonthDay = function (dateText, today, holidayMap) {
+  WorkTimeline.prototype.renderMonthDay = function (dateText, today, holidayMap, visibleTasks) {
     var isCurrentMonth = dateText >= this.range.startDate && dateText <= this.range.endDate;
     var info = parseDateOnly(dateText);
     var holiday = isCurrentMonth ? holidayMap[dateText] : null;
     var className = 'wt-month-day ' + getDayClass(info.weekday) + getHolidayClass(holiday) + (isCurrentMonth ? '' : ' wt-month-day-empty') + (dateText === today ? ' wt-month-day-today' : '');
     var day = el('div', className);
+    var dayTasks = isCurrentMonth ? getTasksOnDate(visibleTasks, dateText) : [];
+    var maxVisibleTasks = Math.max(Number(this.options.maxVisibleTasksPerDay) || 3, 0);
+    var visibleDayTasks = dayTasks.slice(0, maxVisibleTasks);
+    var hiddenDayTasks = dayTasks.slice(maxVisibleTasks);
+    var list;
 
     day.appendChild(el('div', 'wt-month-day-number', String(info.day)));
     if (holiday) {
       day.appendChild(renderHolidayName(holiday));
+    }
+    if (visibleDayTasks.length || hiddenDayTasks.length) {
+      list = el('div', 'wt-month-day-task-list');
+      for (var i = 0; i < visibleDayTasks.length; i += 1) {
+        list.appendChild(renderMonthDayTask(visibleDayTasks[i], dateText, this.range));
+      }
+      if (hiddenDayTasks.length) {
+        list.appendChild(renderMoreButton(dateText, hiddenDayTasks, dayTasks, holiday, 'wt-month-day-more wt-month-cell-more'));
+      }
+      day.appendChild(list);
     }
     return day;
   };
@@ -352,7 +476,13 @@
       var taskNode = closest(event.target, '.wt-task-clickable');
       var moreNode = closest(event.target, '.wt-month-more');
       var closeNode = closest(event.target, '.wt-modal-close');
+      var endDateActionNode = closest(event.target, '[data-wt-enddate-action]');
       var employeeNode;
+
+      if (endDateActionNode) {
+        self.handleEndDateModalAction(endDateActionNode.getAttribute('data-wt-enddate-action'));
+        return;
+      }
 
       if (closeNode) {
         self.closeMoreModal();
@@ -365,6 +495,14 @@
       }
 
       if (taskNode && taskNode.__wtTask) {
+        if (self.suppressTaskClickUntil && nowTime() < self.suppressTaskClickUntil) {
+          return;
+        }
+        if (self.isCardSectionTaskNode(taskNode)) {
+          event.preventDefault();
+          self.delayTaskClick(taskNode.__wtTask, taskNode.__wtContext, event);
+          return;
+        }
         self.handleTaskClick(taskNode.__wtTask, taskNode.__wtContext, event);
         return;
       }
@@ -374,17 +512,410 @@
         call(self.options.onEmployeeClick, self, [employeeNode.__wtEmployee, event]);
       }
     });
+
+    this.on(this.element, 'dragstart', function (event) {
+      self.handleCardDragStart(event);
+    });
+    this.on(this.element, 'dblclick', function (event) {
+      self.handleCardDoubleClick(event);
+    });
+    this.on(this.element, 'dragover', function (event) {
+      self.handleCardDragOver(event);
+    });
+    this.on(this.element, 'dragleave', function (event) {
+      self.handleCardDragLeave(event);
+    });
+    this.on(this.element, 'drop', function (event) {
+      self.handleCardDrop(event);
+    });
+    this.on(this.element, 'dragend', function () {
+      self.clearCardDragState();
+    });
   };
 
   WorkTimeline.prototype.handleTaskClick = function (task, context, event) {
-    if (typeof this.options.onTaskClick === 'function') {
-      this.options.onTaskClick.call(this, task, context, event);
+    var payload = buildTaskClickPayload(task, context, event);
+
+    invokeConfiguredCallback(this, 'onTaskClick', 'taskClickFunctionName', [task, payload, event]);
+  };
+
+  WorkTimeline.prototype.isCardSectionTaskNode = function (taskNode) {
+    return this.viewType === 'week' && this.getWeeklyDisplayMode() === 'cardSection' && !!closest(taskNode, '.wt-week-task-card');
+  };
+
+  WorkTimeline.prototype.delayTaskClick = function (task, context, event) {
+    var self = this;
+    this.clearTaskClickTimer();
+    // cardSection은 click과 dblclick이 같은 card/bar에서 발생하므로
+    // 단일 click callback을 잠시 지연시켜 dblclick이 들어오면 취소할 수 있게 한다.
+    this.taskClickTimer = window.setTimeout(function () {
+      self.taskClickTimer = null;
+      self.handleTaskClick(task, context, event);
+    }, 300);
+  };
+
+  WorkTimeline.prototype.clearTaskClickTimer = function () {
+    if (this.taskClickTimer) {
+      window.clearTimeout(this.taskClickTimer);
+      this.taskClickTimer = null;
+    }
+  };
+
+  WorkTimeline.prototype.handleCardDoubleClick = function (event) {
+    if (this.viewType !== 'week' || this.getWeeklyDisplayMode() !== 'cardSection' || this.dragState) {
       return;
     }
 
-    if (this.options.taskClickFunctionName && typeof window[this.options.taskClickFunctionName] === 'function') {
-      window[this.options.taskClickFunctionName](task, context, event);
+    var card = closest(event.target, '.wt-week-task-card');
+    if (!card || !card.__wtTask) {
+      return;
     }
+    if (!this.canEditTaskEndDate(card.__wtTask)) {
+      return;
+    }
+
+    event.preventDefault();
+    this.clearTaskClickTimer();
+    // dblclick 직후 브라우저가 click을 한 번 더 전달할 수 있어 짧게 무시한다.
+    this.suppressTaskClickUntil = nowTime() + 350;
+    this.openEndDateModal(getTaskKey(card.__wtTask));
+  };
+
+  WorkTimeline.prototype.handleCardDragStart = function (event) {
+    if (this.viewType !== 'week' || this.getWeeklyDisplayMode() !== 'cardSection' || !this.options.enableTaskDrag) {
+      return;
+    }
+
+    var card = closest(event.target, '.wt-week-task-card');
+    if (!card || !card.__wtTask || !event.dataTransfer) {
+      return;
+    }
+    if (!this.canDragTask(card.__wtTask)) {
+      event.preventDefault();
+      return;
+    }
+
+    var task = card.__wtTask;
+    var taskKey = getTaskKey(task);
+    if (!taskKey) {
+      console.warn('workTimeline: taskId not found for draggable card.', task);
+      event.preventDefault();
+      return;
+    }
+
+    this.dragState = {
+      taskKey: taskKey,
+      oldStartDate: task.startDate,
+      oldEndDate: task.endDate,
+      card: card
+    };
+    this.clearTaskClickTimer();
+    card.className = mergeClass(card.className, 'wt-card-dragging');
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', taskKey);
+  };
+
+  WorkTimeline.prototype.handleCardDragOver = function (event) {
+    if (!this.options.enableTaskDrag || !this.dragState) {
+      return;
+    }
+
+    var day = this.getWeekCardDayFromEvent(event);
+    if (!day || !day.getAttribute('data-wt-date')) {
+      return;
+    }
+
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+    day.className = mergeClass(day.className, 'wt-drop-target-active');
+  };
+
+  WorkTimeline.prototype.handleCardDragLeave = function (event) {
+    if (!this.options.enableTaskDrag) {
+      return;
+    }
+
+    var day = this.getWeekCardDayFromEvent(event);
+    if (!day || (event.relatedTarget && day.contains(event.relatedTarget))) {
+      return;
+    }
+    removeClass(day, 'wt-drop-target-active');
+  };
+
+  WorkTimeline.prototype.handleCardDrop = function (event) {
+    if (!this.options.enableTaskDrag || !this.dragState) {
+      return;
+    }
+
+    var day = this.getWeekCardDayFromEvent(event);
+    if (!day) {
+      this.clearCardDragState();
+      return;
+    }
+
+    var newStartDate = day.getAttribute('data-wt-date');
+    if (!isDateOnly(newStartDate)) {
+      console.warn('workTimeline: invalid drop date.', newStartDate);
+      this.clearCardDragState();
+      return;
+    }
+
+    event.preventDefault();
+    removeClass(day, 'wt-drop-target-active');
+    // Drop target date becomes the new startDate; moveTaskByDrag keeps the original duration.
+    this.moveTaskByDrag(this.dragState.taskKey, newStartDate);
+    this.suppressTaskClickUntil = nowTime() + 350;
+    this.clearCardDragState();
+  };
+
+  WorkTimeline.prototype.getWeekCardDayFromEvent = function (event) {
+    var directDay = closest(event.target, '.wt-week-card-day');
+    var wrap;
+    var rect;
+    var x;
+    var dayWidth;
+    var index;
+    var days;
+
+    if (directDay) {
+      return directDay;
+    }
+
+    // Range bars are absolutely positioned above day columns, so drop can occur on the bar itself.
+    // In that case calculate the target day from mouse X inside the 7-day grid.
+    wrap = closest(event.target, '.wt-week-card-sections');
+    if (!wrap || !wrap.getBoundingClientRect) {
+      return null;
+    }
+
+    rect = wrap.getBoundingClientRect();
+    x = event.clientX - rect.left + wrap.scrollLeft;
+    dayWidth = wrap.scrollWidth / this.range.days.length;
+    index = Math.floor(x / dayWidth);
+    days = wrap.querySelectorAll('.wt-week-card-day');
+
+    if (index < 0) {
+      index = 0;
+    }
+    if (index >= days.length) {
+      index = days.length - 1;
+    }
+    return days[index] || null;
+  };
+
+  WorkTimeline.prototype.clearCardDragState = function () {
+    var draggingNodes = this.element.querySelectorAll('.wt-card-dragging');
+    var activeNodes = this.element.querySelectorAll('.wt-drop-target-active');
+    for (var i = 0; i < draggingNodes.length; i += 1) {
+      removeClass(draggingNodes[i], 'wt-card-dragging');
+    }
+    for (var j = 0; j < activeNodes.length; j += 1) {
+      removeClass(activeNodes[j], 'wt-drop-target-active');
+    }
+    this.dragState = null;
+  };
+
+  WorkTimeline.prototype.moveTaskByDrag = function (taskKey, newStartDate) {
+    if (!this.options.enableTaskDrag) {
+      return;
+    }
+
+    var task = findTaskByKey(this.tasks, taskKey);
+    if (!task) {
+      console.warn('workTimeline: taskId not found for move.', taskKey);
+      return;
+    }
+    if (!this.canDragTask(task)) {
+      return;
+    }
+
+    var oldStartDate = task.startDate;
+    var oldEndDate = task.endDate;
+    var durationDays;
+    var newEndDate;
+    var payload;
+
+    if (oldStartDate === newStartDate) {
+      return;
+    }
+
+    if (!isDateOnly(oldStartDate) || !isDateOnly(oldEndDate) || oldStartDate > oldEndDate) {
+      console.warn('workTimeline: invalid task date for move.', task);
+      return;
+    }
+
+    durationDays = dayDiff(oldStartDate, oldEndDate) + 1;
+    newEndDate = addDays(newStartDate, durationDays - 1);
+    if (!isDateOnly(newEndDate)) {
+      console.warn('workTimeline: failed to calculate newEndDate.', task);
+      return;
+    }
+
+    task.startDate = newStartDate;
+    task.endDate = newEndDate;
+    payload = extend(buildTaskChangePayload(task, {
+      oldStartDate: oldStartDate,
+      oldEndDate: oldEndDate,
+      newStartDate: newStartDate,
+      newEndDate: newEndDate,
+      changeType: 'move'
+    }), {
+      durationDays: durationDays,
+      moveMode: 'keepDuration'
+    });
+
+    this.handleTaskMove(payload);
+    this.render();
+  };
+
+  WorkTimeline.prototype.handleTaskMove = function (payload) {
+    invokeConfiguredCallback(this, 'onTaskMove', 'taskMoveFunctionName', [payload]);
+  };
+
+  WorkTimeline.prototype.openEndDateModal = function (taskKey) {
+    this.closeEndDateModal();
+
+    var task = findTaskByKey(this.tasks, taskKey);
+    if (!task) {
+      console.warn('workTimeline: taskId not found for endDate change.', taskKey);
+      return;
+    }
+
+    var overlay = el('div', 'wt-end-date-modal-backdrop');
+    var modal = el('div', 'wt-end-date-modal-card');
+    var body = el('div', 'wt-end-date-modal-body');
+    var actions = el('div', 'wt-end-date-modal-actions');
+    var input = el('input', 'wt-end-date-modal-input');
+    var error = el('div', 'wt-end-date-modal-error');
+    var cancelButton = button('wt-end-date-modal-button', '취소', 'data-wt-enddate-action', 'cancel');
+    var applyButton = button('wt-end-date-modal-button wt-end-date-modal-apply', '적용', 'data-wt-enddate-action', 'apply');
+
+    overlay.__wtEndDateTaskKey = taskKey;
+    input.type = 'text';
+    input.value = task.endDate || '';
+    input.placeholder = 'YYYY-MM-DD';
+    input.setAttribute('aria-label', '새 종료일');
+
+    modal.appendChild(el('div', 'wt-end-date-modal-title', '업무 종료일 변경'));
+    body.appendChild(el('div', 'wt-end-date-modal-row', '업무명: ' + (task.title || '')));
+    body.appendChild(el('div', 'wt-end-date-modal-row', '시작일: ' + (task.startDate || '')));
+    body.appendChild(el('div', 'wt-end-date-modal-row', '현재 종료일: ' + (task.endDate || '')));
+    body.appendChild(el('label', 'wt-end-date-modal-label', '새 종료일'));
+    body.appendChild(input);
+    body.appendChild(error);
+    actions.appendChild(cancelButton);
+    actions.appendChild(applyButton);
+    modal.appendChild(body);
+    modal.appendChild(actions);
+    overlay.appendChild(modal);
+    this.element.appendChild(overlay);
+    this.endDateModal = overlay;
+    input.focus();
+    input.select();
+  };
+
+  WorkTimeline.prototype.handleEndDateModalAction = function (action) {
+    if (action === 'cancel') {
+      this.closeEndDateModal();
+      return;
+    }
+    if (action === 'apply') {
+      this.applyEndDateModal();
+    }
+  };
+
+  WorkTimeline.prototype.applyEndDateModal = function () {
+    if (!this.endDateModal) {
+      return;
+    }
+
+    var taskKey = this.endDateModal.__wtEndDateTaskKey;
+    var input = this.endDateModal.querySelector('.wt-end-date-modal-input');
+    var error = this.endDateModal.querySelector('.wt-end-date-modal-error');
+    var task = findTaskByKey(this.tasks, taskKey);
+    var newEndDate = input ? input.value : '';
+
+    if (!task) {
+      console.warn('workTimeline: taskId not found for endDate apply.', taskKey);
+      return;
+    }
+    if (!isDateOnly(newEndDate)) {
+      this.showEndDateError(error, '종료일은 YYYY-MM-DD 형식이어야 합니다.');
+      return;
+    }
+    if (newEndDate < task.startDate) {
+      this.showEndDateError(error, '종료일은 시작일보다 빠를 수 없습니다.');
+      return;
+    }
+    if (newEndDate === task.endDate) {
+      this.closeEndDateModal();
+      return;
+    }
+
+    this.changeTaskEndDate(taskKey, newEndDate);
+  };
+
+  WorkTimeline.prototype.showEndDateError = function (errorNode, message) {
+    if (errorNode) {
+      errorNode.textContent = message;
+    }
+    window.alert(message);
+  };
+
+  WorkTimeline.prototype.changeTaskEndDate = function (taskKey, newEndDate) {
+    var task = findTaskByKey(this.tasks, taskKey);
+    if (!task) {
+      console.warn('workTimeline: taskId not found for endDate change.', taskKey);
+      return;
+    }
+    if (!this.canEditTaskEndDate(task)) {
+      return;
+    }
+
+    var oldStartDate = task.startDate;
+    var oldEndDate = task.endDate;
+    var payload;
+
+    if (!isDateOnly(newEndDate) || newEndDate < task.startDate) {
+      console.warn('workTimeline: invalid newEndDate.', newEndDate);
+      return;
+    }
+
+    // The library mutates direct data for immediate UI feedback only.
+    // Persisting this change is the responsibility of the consumer callback.
+    task.endDate = newEndDate;
+    payload = buildTaskChangePayload(task, {
+      oldStartDate: oldStartDate,
+      oldEndDate: oldEndDate,
+      newStartDate: task.startDate,
+      newEndDate: newEndDate,
+      changeType: 'endDate'
+    });
+
+    this.closeEndDateModal();
+    this.render();
+    this.handleTaskEndDateChange(payload);
+  };
+
+  WorkTimeline.prototype.isTaskEditable = function (task) {
+    if (task && typeof task.canEdit === 'boolean') {
+      return task.canEdit;
+    }
+    return this.options.defaultTaskEditable === true;
+  };
+
+  WorkTimeline.prototype.canDragTask = function (task) {
+    return this.options.enableTaskDrag === true && this.isTaskEditable(task);
+  };
+
+  WorkTimeline.prototype.canEditTaskEndDate = function (task) {
+    return this.options.enableTaskEndDateEdit === true && this.isTaskEditable(task);
+  };
+
+  WorkTimeline.prototype.handleTaskEndDateChange = function (payload) {
+    invokeConfiguredCallback(this, 'onTaskEndDateChange', 'taskEndDateChangeFunctionName', [payload]);
   };
 
   WorkTimeline.prototype.handleMoreClick = function (dateText, hiddenTasks, allTasks, holiday) {
@@ -434,18 +965,29 @@
     this.moreModal = null;
   };
 
+  WorkTimeline.prototype.closeEndDateModal = function () {
+    if (this.endDateModal && this.endDateModal.parentNode) {
+      this.endDateModal.parentNode.removeChild(this.endDateModal);
+    }
+    this.endDateModal = null;
+  };
+
   WorkTimeline.prototype.on = function (target, type, handler) {
     target.addEventListener(type, handler, false);
     this.handlers.push({ target: target, type: type, handler: handler });
   };
 
   WorkTimeline.prototype.unbindEvents = function () {
+    this.clearTaskClickTimer();
+    // Handlers are registered per instance so multiple JSP widgets can coexist safely.
+    // render() also calls this before replacing DOM to avoid duplicate delegated listeners.
     for (var i = 0; i < this.handlers.length; i += 1) {
       var item = this.handlers[i];
       item.target.removeEventListener(item.type, item.handler, false);
     }
     this.handlers = [];
     this.closeMoreModal();
+    this.closeEndDateModal();
   };
 
   WorkTimeline.prototype.fail = function (code, message) {
@@ -506,7 +1048,7 @@
 
   function renderTaskBar(employee, item, laneIndex, range) {
     var status = normalizeStatus(item.task.status);
-    var bar = button('wt-task-bar wt-task-clickable wt-task-status-' + status.toLowerCase().replace(/_/g, '-'), item.task.title || '');
+    var bar = button('wt-task-bar wt-task-clickable ' + statusClass(status), item.task.title || '');
     var dayCount = range.days.length;
     var left = (item.startOffset / dayCount) * 100;
     var width = ((item.endOffset - item.startOffset + 1) / dayCount) * 100;
@@ -527,6 +1069,53 @@
     return bar;
   }
 
+  function renderWeekRangeBar(item, laneIndex, employeeMap, range, enableTaskDrag, isTaskEditable) {
+    var task = item.task;
+    var status = normalizeStatus(task.status);
+    var employee = employeeMap[task.employeeId];
+    var owner = formatTaskOwnerWithEmployee(task, employee);
+    var className = [
+      'wt-week-task-card',
+      'wt-week-range-bar',
+      enableTaskDrag ? 'wt-week-card-draggable wt-task-drag-enabled' : 'wt-task-drag-disabled',
+      isTaskEditable ? 'wt-task-editable' : 'wt-task-readonly',
+      'wt-task-clickable',
+      statusClass(status),
+      item.startsBeforeRange ? 'wt-week-range-bar-start' : '',
+      item.endsAfterRange ? 'wt-week-range-bar-end' : '',
+      item.spanDays === 1 ? 'wt-week-range-bar-single' : ''
+    ].join(' ');
+    var bar = button(className, '');
+
+    if (enableTaskDrag) {
+      bar.setAttribute('draggable', 'true');
+    }
+    bar.setAttribute('data-wt-task-key', getTaskKey(task));
+    bar.style.left = 'calc(' + ((item.startOffset / range.days.length) * 100) + '% + 8px)';
+    bar.style.width = 'calc(' + ((item.spanDays / range.days.length) * 100) + '% - 16px)';
+    bar.style.top = (74 + laneIndex * 76) + 'px';
+    bar.title = (task.title || '') + ' (' + item.displayStartDate + ' ~ ' + item.displayEndDate + ')' + (isTaskEditable ? '' : ' - 수정 권한 없음');
+    bar.innerHTML = [
+      '<span class="wt-week-range-content">',
+      '<span class="wt-week-task-title">' + escapeHtml(task.title || '') + '</span>',
+      '<span class="wt-week-task-owner">' + escapeHtml(owner) + '</span>',
+      '<span class="wt-week-task-period">' + escapeHtml(item.displayStartDate || '') + ' ~ ' + escapeHtml(item.displayEndDate || '') + '</span>',
+      '<span class="wt-week-task-status">' + escapeHtml(status) + '</span>',
+      '</span>'
+    ].join('');
+    bar.__wtTask = task;
+    bar.__wtContext = {
+      employee: employee || null,
+      date: item.displayStartDate,
+      displayStartDate: item.displayStartDate,
+      displayEndDate: item.displayEndDate,
+      visibleStartDate: range.startDate,
+      visibleEndDate: range.endDate,
+      weeklyDisplayMode: 'cardSection'
+    };
+    return bar;
+  }
+
   function renderMoreButton(dateText, hiddenTasks, allTasks, holiday, extraClassName) {
     var more = button('wt-month-more' + (extraClassName ? ' ' + extraClassName : ''), '... ' + hiddenTasks.length);
     more.title = dateText + ' 숨겨진 업무 ' + hiddenTasks.length + '건 보기';
@@ -539,11 +1128,33 @@
     return more;
   }
 
+  function renderMonthDayTask(task, dateText, range) {
+    var status = normalizeStatus(task.status);
+    var owner = formatTaskOwner(task);
+    var node = button('wt-month-day-task wt-task-clickable ' + statusClass(status), '');
+    var clippedRange = clipDateRange(task.startDate, task.endDate, range.startDate, range.endDate);
+
+    node.title = '[' + owner + '] ' + (task.title || '') + ' (' + task.startDate + ' ~ ' + task.endDate + ')';
+    node.innerHTML = '<span class="wt-month-day-task-owner">[' + escapeHtml(owner) + ']</span> <span class="wt-month-day-task-title">' + escapeHtml(task.title || '') + '</span>';
+    node.__wtTask = task;
+    node.__wtContext = {
+      date: dateText,
+      displayStartDate: clippedRange.startDate,
+      displayEndDate: clippedRange.endDate,
+      segmentStartDate: dateText,
+      segmentEndDate: dateText,
+      visibleStartDate: range.startDate,
+      visibleEndDate: range.endDate,
+      sourceDate: dateText
+    };
+    return node;
+  }
+
   function renderMonthSegmentBar(segment, laneIndex, range, weekStartDate, weekEndDate) {
     var task = segment.task;
     var status = normalizeStatus(task.status);
     var owner = formatTaskOwner(task);
-    var node = button('wt-month-bar wt-task-clickable wt-task-status-' + status.toLowerCase().replace(/_/g, '-'), '');
+    var node = button('wt-month-bar wt-task-clickable ' + statusClass(status), '');
 
     node.style.gridColumn = (segment.startColumn + 1) + ' / span ' + segment.spanDays;
     node.style.gridRow = (laneIndex + 1);
@@ -595,15 +1206,14 @@
         continue;
       }
 
-      if (task.startDate <= range.endDate && task.endDate >= range.startDate) {
-        var displayStartDate = maxDateText(task.startDate, range.startDate);
-        var displayEndDate = minDateText(task.endDate, range.endDate);
+      if (isTaskOverlapping(task, range.startDate, range.endDate)) {
+        var clippedRange = clipDateRange(task.startDate, task.endDate, range.startDate, range.endDate);
         grouped[task.employeeId].push({
           task: task,
-          displayStartDate: displayStartDate,
-          displayEndDate: displayEndDate,
-          startOffset: dayDiff(range.startDate, displayStartDate),
-          endOffset: dayDiff(range.startDate, displayEndDate)
+          displayStartDate: clippedRange.startDate,
+          displayEndDate: clippedRange.endDate,
+          startOffset: dayDiff(range.startDate, clippedRange.startDate),
+          endOffset: dayDiff(range.startDate, clippedRange.endDate)
         });
       }
     }
@@ -615,6 +1225,81 @@
     });
 
     return grouped;
+  }
+
+  function buildWeekRangeItems(tasks, range) {
+    var items = [];
+    for (var i = 0; i < tasks.length; i += 1) {
+      var task = tasks[i];
+      var displayStartDate;
+      var displayEndDate;
+      var startOffset;
+      var endOffset;
+
+      if (!isDateOnly(task.startDate) || !isDateOnly(task.endDate) || task.startDate > task.endDate) {
+        continue;
+      }
+      if (!isTaskOverlapping(task, range.startDate, range.endDate)) {
+        continue;
+      }
+
+      // Clip every task to the visible week before converting it into a range card/bar.
+      // This keeps previous/next-week tasks visible only inside the current 7-day viewport.
+      var clippedRange = clipDateRange(task.startDate, task.endDate, range.startDate, range.endDate);
+      displayStartDate = clippedRange.startDate;
+      displayEndDate = clippedRange.endDate;
+      startOffset = dayDiff(range.startDate, displayStartDate);
+      endOffset = dayDiff(range.startDate, displayEndDate);
+      items.push({
+        task: task,
+        displayStartDate: displayStartDate,
+        displayEndDate: displayEndDate,
+        startOffset: startOffset,
+        endOffset: endOffset,
+        spanDays: endOffset - startOffset + 1,
+        startsBeforeRange: task.startDate < range.startDate,
+        endsAfterRange: task.endDate > range.endDate
+      });
+    }
+
+    items.sort(function (a, b) {
+      return compare(a.displayStartDate, b.displayStartDate) || compare(a.displayEndDate, b.displayEndDate) || compare(a.task.title, b.task.title);
+    });
+    return items;
+  }
+
+  function countWeekItemsOnDate(items, dateText) {
+    var count = 0;
+    for (var i = 0; i < items.length; i += 1) {
+      if (items[i].displayStartDate <= dateText && items[i].displayEndDate >= dateText) {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  function buildEmployeeMap(employees) {
+    var map = {};
+    for (var i = 0; i < employees.length; i += 1) {
+      map[employees[i].id] = employees[i];
+    }
+    return map;
+  }
+
+  function findTaskByKey(tasks, taskKey) {
+    for (var i = 0; i < tasks.length; i += 1) {
+      if (getTaskKey(tasks[i]) === taskKey) {
+        return tasks[i];
+      }
+    }
+    return null;
+  }
+
+  function getTaskKey(task) {
+    if (!task) {
+      return '';
+    }
+    return task.taskId || task.id ? String(task.taskId || task.id) : '';
   }
 
   function filterEmployeesWithVisibleTasks(employees, groupedTasks) {
@@ -635,7 +1320,8 @@
       if (!isDateOnly(task.startDate) || !isDateOnly(task.endDate) || task.startDate > task.endDate) {
         continue;
       }
-      if (task.startDate <= range.endDate && task.endDate >= range.startDate) {
+      // Same inclusive overlap rule is shared by week and month rendering.
+      if (isTaskOverlapping(task, range.startDate, range.endDate)) {
         visible.push(task);
       }
     }
@@ -643,6 +1329,120 @@
       return compare(a.startDate, b.startDate) || compare(a.endDate, b.endDate) || compare(a.title, b.title);
     });
     return visible;
+  }
+
+  function getTasksOnDate(tasks, dateText) {
+    var result = [];
+    for (var i = 0; i < tasks.length; i += 1) {
+      if (isTaskOverlapping(tasks[i], dateText, dateText)) {
+        result.push(tasks[i]);
+      }
+    }
+    return result;
+  }
+
+  /**
+   * 월간 view에서는 장기 업무와 날짜 cell 목록 업무를 먼저 분리한다.
+   * progress bar로 그려진 업무가 날짜 cell과 ... N modal에 중복 표시되지 않도록 한다.
+   */
+  function splitMonthTasks(tasks, monthRangeBarMinDays) {
+    var rangeTasks = [];
+    var dayListTasks = [];
+    var minDays = Math.max(Number(monthRangeBarMinDays) || 2, 1);
+
+    for (var i = 0; i < tasks.length; i += 1) {
+      // Month progress bars and date-cell lists are mutually exclusive to avoid duplicate task display.
+      if (getTaskDurationDays(tasks[i]) >= minDays) {
+        rangeTasks.push(tasks[i]);
+      } else {
+        dayListTasks.push(tasks[i]);
+      }
+    }
+
+    return { rangeTasks: rangeTasks, dayListTasks: dayListTasks };
+  }
+
+  function getTaskDurationDays(task) {
+    if (!task || !isDateOnly(task.startDate) || !isDateOnly(task.endDate) || task.startDate > task.endDate) {
+      return 0;
+    }
+    return dayDiff(task.startDate, task.endDate) + 1;
+  }
+
+  /**
+   * 현재 표시 기간과 업무 기간이 겹치는지 확인한다.
+   * 주간/월간/날짜 cell 모두 같은 inclusive overlap 규칙을 사용한다.
+   */
+  function isTaskOverlapping(task, visibleStartDate, visibleEndDate) {
+    return task.startDate <= visibleEndDate && task.endDate >= visibleStartDate;
+  }
+
+  /**
+   * 실제 화면에 그릴 기간을 visible range 안으로 자른다.
+   * range bar 위치 계산과 callback context가 같은 clipping 기준을 공유하게 한다.
+   */
+  function clipDateRange(startDate, endDate, visibleStartDate, visibleEndDate) {
+    return {
+      startDate: maxDateText(startDate, visibleStartDate),
+      endDate: minDateText(endDate, visibleEndDate)
+    };
+  }
+
+  /**
+   * inline callback과 JSP 전역 functionName fallback 호출 순서를 한 곳에서 관리한다.
+   * task click, drag 이동, 종료일 변경이 같은 호환성 규칙을 사용한다.
+   */
+  function invokeConfiguredCallback(instance, callbackName, functionNameOption, args) {
+    var options = instance.options;
+    var functionName = options[functionNameOption];
+
+    if (typeof options[callbackName] === 'function') {
+      options[callbackName].apply(instance, args);
+      return true;
+    }
+
+    if (functionName && typeof window[functionName] === 'function') {
+      window[functionName].apply(window, args);
+      return true;
+    }
+
+    return false;
+  }
+
+  function buildTaskChangePayload(task, values) {
+    // Date-change callbacks share a stable payload shape so save handlers can be reused.
+    return extend(buildTaskCommonPayload(task), extend({
+      oldStartDate: '',
+      oldEndDate: '',
+      newStartDate: task.startDate || '',
+      newEndDate: task.endDate || '',
+      changeType: '',
+      source: 'cardSection'
+    }, values || {}));
+  }
+
+  function buildTaskClickPayload(task, context, event) {
+    // Keep the original task as the first callback argument, but provide a richer second payload.
+    return extend(extend({}, context || {}), extend(buildTaskCommonPayload(task), {
+      startDate: task.startDate || '',
+      endDate: task.endDate || '',
+      source: context && context.weeklyDisplayMode === 'cardSection' ? 'cardSection' : ((context && context.segmentStartDate) ? 'month' : 'timeline'),
+      eventType: event && event.type ? event.type : 'click'
+    }));
+  }
+
+  function buildTaskCommonPayload(task) {
+    task = task || {};
+    return {
+      task: task,
+      taskId: task.taskId || task.id || '',
+      title: task.title || '',
+      departmentId: task.departmentId || '',
+      departmentName: task.departmentName || '',
+      employeeId: task.employeeId || '',
+      employeeName: task.employeeName || '',
+      canEdit: typeof task.canEdit === 'boolean' ? task.canEdit : null
+    };
   }
 
   function normalizeHolidays(holidays) {
@@ -682,8 +1482,10 @@
 
     for (var i = 0; i < tasks.length; i += 1) {
       var task = tasks[i];
-      var displayStartDate = maxDateText(task.startDate, range.startDate);
-      var displayEndDate = minDateText(task.endDate, range.endDate);
+      // Month bars are first clipped to the visible month, then split again per calendar week row.
+      var clippedRange = clipDateRange(task.startDate, task.endDate, range.startDate, range.endDate);
+      var displayStartDate = clippedRange.startDate;
+      var displayEndDate = clippedRange.endDate;
       var segmentStartDate = maxDateText(displayStartDate, weekStartDate);
       var segmentEndDate = minDateText(displayEndDate, weekEndDate);
 
@@ -745,29 +1547,15 @@
     return result;
   }
 
-  function uniqueTasksFromSegments(segments) {
-    var result = [];
-    var seen = {};
-    for (var i = 0; i < segments.length; i += 1) {
-      var task = segments[i].task;
-      var key = task.taskId || task.id || [task.employeeId, task.title, task.startDate, task.endDate].join('|');
-      if (!seen[key]) {
-        seen[key] = true;
-        result.push(task);
-      }
-    }
-    return result;
-  }
-
-  function formatWeekRange(weekDays, range) {
-    var startDate = maxDateText(weekDays[0], range.startDate);
-    var endDate = minDateText(weekDays[weekDays.length - 1], range.endDate);
-    return startDate + ' ~ ' + endDate;
-  }
-
   function formatTaskOwner(task) {
     var departmentName = task.departmentName || task.departmentId || '';
     var employeeName = task.employeeName || task.employeeId || '';
+    return [departmentName, employeeName].filter(Boolean).join(' / ');
+  }
+
+  function formatTaskOwnerWithEmployee(task, employee) {
+    var departmentName = task.departmentName || (employee && employee.departmentName) || task.departmentId || '';
+    var employeeName = task.employeeName || (employee && employee.name) || task.employeeId || '';
     return [departmentName, employeeName].filter(Boolean).join(' / ');
   }
 
@@ -810,6 +1598,8 @@
   }
 
   function isDateOnly(value) {
+    // YYYY-MM-DD strings are intentionally compared lexicographically elsewhere.
+    // This validation prevents malformed strings from breaking that date-only rule.
     return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && formatDate(parseDateOnly(value)) === value;
   }
 
@@ -822,6 +1612,7 @@
     if (month < 1 || month > 12 || day < 1 || day > maxDay) {
       return { year: 0, month: 0, day: 0, dayNumber: NaN, weekday: NaN };
     }
+    // Use civil day numbers instead of Date objects to avoid timezone shifts in JSP pages.
     dayNumber = daysFromCivil(year, month, day);
     return { year: year, month: month, day: day, dayNumber: dayNumber, weekday: mod(dayNumber + 4, 7) };
   }
@@ -835,6 +1626,7 @@
   }
 
   function dayDiff(startDate, endDate) {
+    // Difference is inclusive/exclusive depending on caller; range spans add +1 explicitly.
     return parseDateOnly(endDate).dayNumber - parseDateOnly(startDate).dayNumber;
   }
 
@@ -912,6 +1704,13 @@
     return ['TODO', 'IN_PROGRESS', 'DONE', 'DELAYED', 'HOLD'].indexOf(value) >= 0 ? value : 'TODO';
   }
 
+  /**
+   * 상태별 색상은 CSS가 책임지므로 JS는 안정적인 wt- class 이름만 만든다.
+   */
+  function statusClass(status) {
+    return 'wt-task-status-' + normalizeStatus(status).toLowerCase().replace(/_/g, '-');
+  }
+
   function button(className, text, attrName, attrValue) {
     var node = el('button', className, text);
     node.type = 'button';
@@ -970,6 +1769,10 @@
 
   function pad(value) {
     return String(value).length < 2 ? '0' + value : String(value);
+  }
+
+  function nowTime() {
+    return new Date().getTime();
   }
 
   function mod(value, divisor) {

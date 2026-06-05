@@ -11,6 +11,7 @@
 - 전체 캘린더 영역은 흰색 배경, 둥근 모서리, 얇은 border, 약한 shadow를 가진 card형 UI로 표시한다.
 - 배경과 경계선은 연한 회색/흰색 계열을 사용하고, 주요 상호작용과 active 상태에는 부드러운 파란색을 사용한다.
 - 상태 색상은 강한 원색 대신 업무 시스템에서 오래 보아도 부담 없는 soft color를 사용한다.
+- 상태별 색상 변경은 CSS의 `wt-task-status-*` class에서 처리하고 JavaScript에 색상값을 hard-code하지 않는다.
 
 ## Layout
 
@@ -24,6 +25,9 @@
     .wt-timeline
       .wt-date-header
       .wt-timeline-body
+  .wt-week-card-sections (week cardSection mode)
+    .wt-week-card-day
+      .wt-week-task-card
   .wt-month (month view)
     .wt-month-weekdays
     .wt-month-grid
@@ -84,6 +88,10 @@ toolbar에는 view 이동과 현재 기간 표시를 배치한다.
 - 월간 날짜 칸은 연한 border로 구분하고 내부 여백을 두어 휴일명이 답답해 보이지 않게 한다.
 - 월간 날짜 cell layer와 task bar layer는 같은 week row 좌표계를 공유하되, 날짜 숫자/휴일명 영역과 bar lane 영역은 겹치지 않게 분리한다.
 - 월간 task bar layer는 날짜 cell 내부에 업무를 반복 append하지 않는다.
+- 월간 progress bar로 표시되는 업무는 날짜 cell 내부 목록에 중복 표시하지 않는다.
+- 기본값 `monthRangeBarMinDays: 2`에서는 여러 날짜 업무는 progress bar, 하루짜리 업무는 날짜 cell 목록으로 표시한다.
+- 월간 날짜 cell 안에는 일자별 업무 label을 `maxVisibleTasksPerDay` 개수까지만 표시하고, 초과분은 같은 날짜 cell 안에 `... N`으로 표시한다.
+- 월간 `... N`은 week row 하단이 아니라 해당 날짜 cell 안에서 날짜 숫자, 휴일명, 업무 label 다음 순서로 표시한다.
 - 업무 bar 때문에 날짜 cell border가 끊기거나 업무가 있는 날짜 위쪽에 별도 선이 생기지 않아야 한다.
 - 오늘 날짜는 연한 파란색 배경 또는 얇은 파란색 inset border로 강조한다.
 - 휴일명은 날짜 숫자 아래에 작게 표시하고 긴 이름은 ellipsis 처리한다.
@@ -110,8 +118,11 @@ toolbar에는 view 이동과 현재 기간 표시를 배치한다.
 - `wt-month-week-bars`
 - `wt-month-day`
 - `wt-month-day-today`
+- `wt-month-day-task-list`
+- `wt-month-day-task`
+- `wt-month-day-more`
+- `wt-month-cell-more`
 - `wt-month-bar`
-- `wt-month-week-more`
 - `wt-month-more`
 
 ## Timeline body
@@ -134,6 +145,72 @@ timeline body는 employee row와 1:1로 대응한다.
 - `wt-timeline-cell`
 - `wt-scroll-area`
 
+## Week cardSection
+
+`weeklyDisplayMode: 'cardSection'`은 version2 실험용 주간 UX다.
+
+- 7일을 동일한 날짜 column grid로 표시한다.
+- 업무는 날짜 column 안에 작은 카드로 나열하지 않고, 시작일~종료일 column을 가로지르는 긴 card/bar로 표시한다.
+- 날짜 column은 header, drop target, 배경 grid 역할을 한다.
+- 업무 card/bar는 업무명, 부서/담당자, 기간, 상태를 순서대로 표시한다.
+- 카드가 길어져도 날짜 섹션 grid가 깨지지 않도록 제목과 보조 텍스트는 ellipsis 처리한다.
+- drag 가능한 카드는 `grab` cursor를 사용한다.
+- drag 중인 카드는 약한 opacity로 표시하고, drop 가능한 날짜 섹션은 연한 파란색 highlight를 사용한다.
+- drag feedback은 기존 cardSection 디자인을 깨지 않는 수준의 최소 스타일로 제한한다.
+- 업무 card/bar를 double click하면 종료일 변경 modal을 표시한다.
+- 종료일 변경 modal은 기존 업무용 card형 modal 톤을 따르되, 월간 `... N` modal과 class를 분리한다.
+- 종료일 입력은 기본 text input을 사용하고 외부 date picker를 사용하지 않는다.
+- 유효성 오류는 modal 안의 짧은 메시지와 alert로 확인 가능해야 한다.
+- 일요일/토요일/휴일 색상은 기존 주간/월간 규칙과 같은 방향을 따른다.
+- 여러 날 업무는 하나의 card/bar가 visible range 안에서 clipping되어 span된다.
+- card/bar 끝부분에는 진행 방향을 암시하는 작은 arrow 느낌을 줄 수 있다.
+- 이전 주에 시작한 업무는 bar 앞쪽에 이어짐 표시를, 다음 주까지 이어지는 업무는 bar 끝쪽에 이어짐 표시를 둘 수 있다.
+- card/bar 내부 decorative element는 카드 click, drag, double click을 방해하지 않아야 한다.
+- `enableTaskDrag: true`인 card/bar는 `wt-task-drag-enabled` class와 `grab` cursor로 drag 가능 상태를 표시한다.
+- `enableTaskDrag: false`인 card/bar는 `wt-task-drag-disabled` class를 사용하고 `move`/`grab` cursor나 drop target highlight를 사용하지 않는다.
+- `canEdit: true`인 업무는 `wt-task-editable`, `canEdit: false` 또는 기본 정책상 수정 불가인 업무는 `wt-task-readonly` class를 사용한다.
+- `wt-task-readonly`는 약한 opacity, dashed border, 기본 pointer cursor 정도로만 구분하고 과한 잠금 아이콘은 사용하지 않는다.
+- 수정 불가 업무도 click 상세는 가능해야 하므로 hover 스타일은 유지하되 drag 가능한 느낌을 주지 않는다.
+- drag 잠금 상태에서도 click 상세와 double click 종료일 변경이 가능해야 하므로 잠금 아이콘 같은 과한 표현은 1차 구현에서 사용하지 않는다.
+- 상태별 색상은 기존 task status class에서 관리하고 JavaScript에 색상값을 hard-code하지 않는다.
+
+권장 class:
+
+- `wt-week-card-sections`
+- `wt-week-card-day`
+- `wt-week-day-section`
+- `wt-week-day-drop-target`
+- `wt-week-card-day-header`
+- `wt-week-card-day-title`
+- `wt-week-card-weekday`
+- `wt-week-card-date`
+- `wt-week-card-count`
+- `wt-week-task-card`
+- `wt-week-range-bar`
+- `wt-week-range-bar-start`
+- `wt-week-range-bar-end`
+- `wt-week-range-bar-single`
+- `wt-week-range-content`
+- `wt-week-card-draggable`
+- `wt-task-drag-enabled`
+- `wt-task-drag-disabled`
+- `wt-task-editable`
+- `wt-task-readonly`
+- `wt-week-task-title`
+- `wt-week-task-owner`
+- `wt-week-task-period`
+- `wt-week-task-status`
+- `wt-week-card-empty`
+- `wt-card-dragging`
+- `wt-drop-target-active`
+- `wt-end-date-modal-backdrop`
+- `wt-end-date-modal-card`
+- `wt-end-date-modal-title`
+- `wt-end-date-modal-body`
+- `wt-end-date-modal-input`
+- `wt-end-date-modal-error`
+- `wt-end-date-modal-actions`
+
 ## Task bar
 
 task bar는 업무 기간을 나타내는 핵심 요소다.
@@ -148,7 +225,7 @@ task bar는 업무 기간을 나타내는 핵심 요소다.
 - 같은 week row 안의 월간 bar는 하나의 긴 pill처럼 보여야 하며 날짜 column마다 끊어진 item처럼 보이면 안 된다.
 - 월간 bar에는 `[부서/직원] 업무명`을 표시하고 긴 업무명은 말줄임 처리한다.
 - 월간 휴일명은 bar 영역보다 위에 표시하고 긴 이름은 ellipsis 처리한다.
-- 월간 week row에서 숨겨진 업무 bar는 `... N` 버튼으로 표시한다.
+- 월간 날짜 cell에서 일자별 표시 개수를 초과한 업무는 같은 날짜 cell 안의 `... N` 버튼으로 표시한다.
 - 주간 task bar는 둥근 pill 형태로 표시하고, 텍스트는 작지만 선명하게 읽히도록 한다.
 - 월간 task bar는 작은 soft pill 형태로 표시한다.
 - `... N`은 클릭 가능한 작은 label로 표시하고 hover 시 약하게 강조한다.
