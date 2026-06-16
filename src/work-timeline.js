@@ -1058,7 +1058,7 @@
     bar.style.left = left + '%';
     bar.style.width = width + '%';
     bar.style.top = (12 + laneIndex * 30) + 'px';
-    bar.title = (item.task.title || '') + ' (' + item.displayStartDate + ' ~ ' + item.displayEndDate + ')';
+    bar.title = (item.task.title || '') + ' (' + formatTaskDateRange(item.displayStartDate, item.displayEndDate) + ')';
     bar.setAttribute('data-wt-status', normalizeStatus(item.task.status));
     bar.innerHTML = '<span class="wt-task-title">' + escapeHtml(item.task.title || '') + '</span>';
     bar.__wtTask = item.task;
@@ -1098,12 +1098,12 @@
     bar.style.left = 'calc(' + ((item.startOffset / range.days.length) * 100) + '% + 8px)';
     bar.style.width = 'calc(' + ((item.spanDays / range.days.length) * 100) + '% - 16px)';
     bar.style.top = (74 + laneIndex * 76) + 'px';
-    bar.title = (task.title || '') + ' (' + item.displayStartDate + ' ~ ' + item.displayEndDate + ')' + (isTaskEditable ? '' : ' - 수정 권한 없음');
+    bar.title = (task.title || '') + ' (' + formatTaskDateRange(item.displayStartDate, item.displayEndDate) + ')' + (isTaskEditable ? '' : ' - 수정 권한 없음');
     bar.innerHTML = [
       '<span class="wt-week-range-content">',
       '<span class="wt-week-task-title">' + escapeHtml(task.title || '') + '</span>',
       '<span class="wt-week-task-owner">' + escapeHtml(owner) + '</span>',
-      '<span class="wt-week-task-period">' + escapeHtml(item.displayStartDate || '') + ' ~ ' + escapeHtml(item.displayEndDate || '') + '</span>',
+      '<span class="wt-week-task-period">' + escapeHtml(formatTaskDateRange(item.displayStartDate, item.displayEndDate)) + '</span>',
       '<span class="wt-week-task-status">' + escapeHtml(status) + '</span>',
       '</span>'
     ].join('');
@@ -1138,7 +1138,7 @@
     var node = button('wt-month-day-task wt-task-clickable ' + getTaskColorClass(task, options), '');
     var clippedRange = clipDateRange(task.startDate, task.endDate, range.startDate, range.endDate);
 
-    node.title = '[' + owner + '] ' + (task.title || '') + ' (' + task.startDate + ' ~ ' + task.endDate + ')';
+    node.title = '[' + owner + '] ' + (task.title || '') + ' (' + formatTaskDateRange(task.startDate, task.endDate) + ')';
     node.setAttribute('data-wt-status', status);
     node.innerHTML = '<span class="wt-month-day-task-owner">[' + escapeHtml(owner) + ']</span> <span class="wt-month-day-task-title">' + escapeHtml(task.title || '') + '</span>';
     node.__wtTask = task;
@@ -1162,7 +1162,7 @@
 
     node.style.gridColumn = (segment.startColumn + 1) + ' / span ' + segment.spanDays;
     node.style.gridRow = (laneIndex + 1);
-    node.title = '[' + owner + '] ' + (task.title || '') + ' (' + segment.segmentStartDate + ' ~ ' + segment.segmentEndDate + ')';
+    node.title = '[' + owner + '] ' + (task.title || '') + ' (' + formatTaskDateRange(segment.segmentStartDate, segment.segmentEndDate) + ')';
     node.setAttribute('data-wt-status', normalizeStatus(task.status));
     node.innerHTML = '<span class="wt-month-bar-owner">[' + escapeHtml(owner) + ']</span> <span class="wt-month-bar-title">' + escapeHtml(task.title || '') + '</span>';
     node.__wtTask = task;
@@ -1191,7 +1191,7 @@
     var item = el('div', 'wt-modal-task');
     item.appendChild(el('div', 'wt-modal-task-title', index + '. ' + (task.title || '')));
     item.appendChild(el('div', 'wt-modal-task-owner', formatTaskOwner(task)));
-    item.appendChild(el('div', 'wt-modal-task-period', task.startDate + ' ~ ' + task.endDate));
+    item.appendChild(el('div', 'wt-modal-task-period', formatTaskDateRange(task.startDate, task.endDate)));
     item.appendChild(el('div', 'wt-modal-task-status', normalizeStatus(task.status)));
     return item;
   }
@@ -1702,6 +1702,22 @@
 
   function minDateText(a, b) {
     return a < b ? a : b;
+  }
+
+  function formatTaskDateRange(startDate, endDate) {
+    if (!startDate && !endDate) {
+      return '';
+    }
+    if (startDate && !endDate) {
+      return startDate;
+    }
+    if (!startDate && endDate) {
+      return endDate;
+    }
+    if (startDate === endDate) {
+      return startDate;
+    }
+    return startDate + ' ~ ' + endDate;
   }
 
   function normalizeStatus(status) {

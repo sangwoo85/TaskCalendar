@@ -111,6 +111,8 @@
         <li>종료일 변경 후 업무 종료일 변경 alert가 표시되어야 합니다.</li>
         <li>새 종료일이 시작일보다 빠르면 경고가 표시되어야 합니다.</li>
         <li>하루짜리 업무는 1일 column만 차지하는 card/bar로 표시되어야 합니다.</li>
+        <li>하루짜리 업무 기간은 2026-06-12처럼 날짜가 한 번만 표시되어야 합니다.</li>
+        <li>여러 날 업무 기간은 2026-06-12 ~ 2026-06-15 형태로 표시되어야 합니다.</li>
         <li>2026-06-02 ~ 2026-06-05 업무는 6/2부터 6/5까지 가로지르는 긴 card/bar로 보여야 합니다.</li>
         <li>2026-05-30 ~ 2026-06-04 업무는 6/1부터 6/4까지 clipping된 card/bar로 보여야 합니다.</li>
         <li>2026-06-05 ~ 2026-06-12 업무는 6/5부터 6/7까지 clipping된 card/bar로 보여야 합니다.</li>
@@ -182,8 +184,24 @@
         '업무명: ' + task.title + '\n' +
         '부서: ' + task.departmentName + '\n' +
         '담당자: ' + task.employeeName + '\n' +
-        '기간: ' + task.startDate + ' ~ ' + task.endDate
+        '기간: ' + formatDemoDateRange(task.startDate, task.endDate)
       );
+    }
+
+    function formatDemoDateRange(startDate, endDate) {
+      if (!startDate && !endDate) {
+        return '';
+      }
+      if (startDate && !endDate) {
+        return startDate;
+      }
+      if (!startDate && endDate) {
+        return endDate;
+      }
+      if (startDate === endDate) {
+        return startDate;
+      }
+      return startDate + ' ~ ' + endDate;
     }
 
     function onTaskMoveDummy(payload) {
@@ -191,10 +209,8 @@
         '업무 시작일 변경\n' +
         '업무ID: ' + payload.taskId + '\n' +
         '업무명: ' + payload.title + '\n' +
-        '기존 시작일: ' + payload.oldStartDate + '\n' +
-        '새 시작일: ' + payload.newStartDate + '\n' +
-        '기존 종료일: ' + payload.oldEndDate + '\n' +
-        '새 종료일: ' + payload.newEndDate + '\n' +
+        '기존 기간: ' + formatDemoDateRange(payload.oldStartDate, payload.oldEndDate) + '\n' +
+        '새 기간: ' + formatDemoDateRange(payload.newStartDate, payload.newEndDate) + '\n' +
         '기간: ' + payload.durationDays + '일\n' +
         '변경유형: ' + payload.changeType + '\n' +
         '발생위치: ' + payload.source
@@ -206,9 +222,8 @@
         '업무 종료일 변경\n' +
         '업무ID: ' + payload.taskId + '\n' +
         '업무명: ' + payload.title + '\n' +
-        '시작일: ' + payload.newStartDate + '\n' +
-        '기존 종료일: ' + payload.oldEndDate + '\n' +
-        '새 종료일: ' + payload.newEndDate + '\n' +
+        '기존 기간: ' + formatDemoDateRange(payload.oldStartDate, payload.oldEndDate) + '\n' +
+        '새 기간: ' + formatDemoDateRange(payload.newStartDate, payload.newEndDate) + '\n' +
         '변경유형: ' + payload.changeType + '\n' +
         '발생위치: ' + payload.source
       );
@@ -533,6 +548,30 @@
           startDate: '2026-06-12',
           endDate: '2026-06-12',
           status: 'TODO'
+        },
+        {
+          taskId: 'T_SINGLE_001',
+          employeeId: 'E001',
+          employeeName: '김상우',
+          departmentId: 'D001',
+          departmentName: '개발팀',
+          title: '하루짜리 업무',
+          startDate: '2026-06-12',
+          endDate: '2026-06-12',
+          status: 'DONE',
+          canEdit: true
+        },
+        {
+          taskId: 'T_RANGE_001',
+          employeeId: 'E002',
+          employeeName: '황하나',
+          departmentId: 'D001',
+          departmentName: '개발팀',
+          title: '여러 날 업무',
+          startDate: '2026-06-12',
+          endDate: '2026-06-15',
+          status: 'IN_PROGRESS',
+          canEdit: true
         }
       ];
 

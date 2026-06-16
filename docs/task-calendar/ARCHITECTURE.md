@@ -52,6 +52,7 @@ taskCalendar/
 
 - `isTaskOverlapping(task, visibleStartDate, visibleEndDate)`: 주간/월간/날짜 cell에서 같은 overlap 조건을 사용한다.
 - `clipDateRange(startDate, endDate, visibleStartDate, visibleEndDate)`: 화면에 표시할 실제 bar 기간을 visible range 안으로 자른다.
+- `formatTaskDateRange(startDate, endDate)`: 업무 기간 표시 문자열을 만든다. 시작일과 종료일이 같으면 날짜를 한 번만 반환한다.
 - `splitMonthTasks(tasks, monthRangeBarMinDays)`: 월간 progress bar 대상과 날짜 cell 목록 대상을 분리해 중복 표시를 막는다.
 - `invokeConfiguredCallback(instance, callbackName, functionNameOption, args)`: `onTaskClick` 같은 inline callback을 우선 호출하고, 없으면 JSP 전역 functionName fallback을 호출한다.
 - `getTaskColorClass(task, options)`: 모든 view의 업무 색상 class 계산 entry point다.
@@ -269,6 +270,25 @@ render task
 random 모드의 기본 seed는 `task.taskId`다. `taskColorSeedField`가 지정되면 해당 field를 우선 사용하고, 값이 없으면 `taskId`, `title + startDate + employeeId` 순서로 fallback한다. 이 계산은 주간 timeline, 주간 cardSection, 월간 progress bar, 월간 날짜 cell 업무 item에서 같은 helper를 사용한다.
 
 색상 class와 권한 class는 분리되어 있다. 예를 들어 `taskColorMode: 'random'`이고 `canEdit: false`인 cardSection 업무는 `wt-task-color-random-N`과 `wt-task-readonly`를 함께 가진다. 상태값은 색상 class와 별개로 `data-wt-status`와 원본 task에 유지한다.
+
+## 업무 기간 표시 문자열 흐름
+
+업무 기간 텍스트는 `formatTaskDateRange(startDate, endDate)`를 사용한다.
+
+```text
+startDate == endDate -> startDate
+startDate != endDate -> startDate ~ endDate
+```
+
+예:
+
+```text
+2026-06-12 ~ 2026-06-12  X
+2026-06-12               O
+2026-06-12 ~ 2026-06-15  O
+```
+
+이 formatter는 주간 timeline title, 주간 cardSection card/bar 본문과 title, 월간 날짜 cell 업무 item title, 월간 progress bar title, 월간 `... N` modal 업무 목록에서 사용한다. 날짜 계산, overlap, clipping, drag/drop 동작에는 관여하지 않는다.
 
 ## 이벤트 바인딩 구조
 

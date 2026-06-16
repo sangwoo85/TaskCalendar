@@ -101,6 +101,8 @@ $('#taskCalendar').workTimeline({
 
 이전 주에 시작해서 이번 주까지 이어지는 업무처럼 시작일이 현재 주 밖인 업무는 `visibleStartDate`부터 clipped bar로 표시한다. 다음 주까지 이어지는 업무는 `visibleEndDate`까지 clipped bar로 표시한다.
 
+화면에 업무 기간을 표시할 때 `startDate`와 `endDate`가 같으면 날짜를 한 번만 표시한다. 예를 들어 하루짜리 업무는 `2026-06-12`로 보이고, 여러 날 업무는 `2026-06-12 ~ 2026-06-15`로 보인다.
+
 카드를 다른 날짜 섹션으로 drag/drop하면 새 날짜가 `newStartDate`가 되고 기존 기간을 유지해 `newEndDate`를 자동 계산한다. taskCalendar는 서버 저장을 직접 수행하지 않으므로 실제 DB 저장은 callback에서 처리한다.
 
 `enableTaskDrag`의 기본값은 `true`라서 기존처럼 drag 시작일 변경이 가능하다. `enableTaskDrag: false`로 설정하면 주간 `cardSection` 업무 card/bar에 drag 속성을 부여하지 않고, 시작일 변경과 `onTaskMove`/`taskMoveFunctionName` 호출을 수행하지 않는다. 이때도 업무 click 상세와 double click 종료일 변경은 유지된다.
@@ -281,7 +283,7 @@ function openTaskDetail(task) {
     + '업무명: ' + task.title + '\n'
     + '부서: ' + task.departmentName + '\n'
     + '담당자: ' + task.employeeName + '\n'
-    + '기간: ' + task.startDate + ' ~ ' + task.endDate
+    + '기간: ' + formatTaskDateRange(task.startDate, task.endDate)
   );
 }
 

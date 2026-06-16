@@ -222,6 +222,14 @@ displayEndDate = min(task.endDate, visibleEndDate)
 - [ ] `canEdit=false` 업무의 readonly 스타일이 유지된다.
 - [ ] 랜덤 색상 class는 `wt-` prefix를 사용한다.
 
+## Task date range display
+
+- [ ] `startDate`와 `endDate`가 같은 업무는 날짜가 한 번만 표시된다.
+- [ ] `startDate`와 `endDate`가 다른 업무는 `startDate ~ endDate` 형태로 표시된다.
+- [ ] 주간 cardSection에서 하루짜리 업무 기간 표시가 중복되지 않는다.
+- [ ] 월간 `... N` modal에서 하루짜리 업무 기간 표시가 중복되지 않는다.
+- [ ] 기간 표시 수정으로 날짜 계산/drag/drop 동작이 변경되지 않는다.
+
 ## CSS 충돌 여부
 
 - [ ] 모든 class가 `wt-` prefix를 사용한다.

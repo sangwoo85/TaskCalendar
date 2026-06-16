@@ -136,6 +136,18 @@ wt-task-status-hold
 
 JavaScript에 색상값을 hard-code하지 않는다.
 
+## 업무 기간 표시 문자열 수정 방법
+
+업무 기간 텍스트는 공통 formatter에서 만든다. `startDate`와 `endDate`가 같으면 날짜를 한 번만 표시하고, 서로 다르면 `startDate ~ endDate` 형식으로 표시한다.
+
+```text
+2026-06-12 ~ 2026-06-12  X
+2026-06-12               O
+2026-06-12 ~ 2026-06-15  O
+```
+
+이 규칙은 주간 timeline, 주간 cardSection, 월간 날짜 cell 업무 item, 월간 progress bar title, 월간 `... N` modal, demo callback alert에 동일하게 적용한다. 표시 문자열만 바꾸며 날짜 계산, drag/drop, clipping 로직은 바꾸지 않는다.
+
 
 ## 업무 색상 모드와 palette 수정 방법
 
