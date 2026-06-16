@@ -710,6 +710,54 @@
   color: #a16207;
 }
 
+.wt-root .wt-task-color-random-0 {
+  border-color: #bfdbfe;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.wt-root .wt-task-color-random-1 {
+  border-color: #bbf7d0;
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.wt-root .wt-task-color-random-2 {
+  border-color: #ddd6fe;
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.wt-root .wt-task-color-random-3 {
+  border-color: #fed7aa;
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.wt-root .wt-task-color-random-4 {
+  border-color: #fbcfe8;
+  background: #fce7f3;
+  color: #be185d;
+}
+
+.wt-root .wt-task-color-random-5 {
+  border-color: #99f6e4;
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.wt-root .wt-task-color-random-6 {
+  border-color: #c7d2fe;
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.wt-root .wt-task-color-random-7 {
+  border-color: #d6d3d1;
+  background: #f5f5f4;
+  color: #57534e;
+}
+
 .wt-root .wt-state {
   display: flex;
   align-items: center;

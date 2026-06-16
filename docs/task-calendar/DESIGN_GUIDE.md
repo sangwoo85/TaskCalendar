@@ -12,6 +12,7 @@
 - 배경과 경계선은 연한 회색/흰색 계열을 사용하고, 주요 상호작용과 active 상태에는 부드러운 파란색을 사용한다.
 - 상태 색상은 강한 원색 대신 업무 시스템에서 오래 보아도 부담 없는 soft color를 사용한다.
 - 상태별 색상 변경은 CSS의 `wt-task-status-*` class에서 처리하고 JavaScript에 색상값을 hard-code하지 않는다.
+- 랜덤 색상 모드는 `wt-task-color-random-*` class를 사용하며 실제 palette 색상은 CSS에서만 관리한다.
 
 ## Layout
 
@@ -261,6 +262,18 @@ task bar는 업무 기간을 나타내는 핵심 요소다.
 
 색상만으로 의미를 전달하지 않고, 필요하면 label이나 tooltip에서도 status를 확인할 수 있게 한다.
 
+
+## 업무 색상 모드
+
+업무 색상은 `taskColorMode` option으로 제어한다.
+
+- `status`: 기본값이며 기존 상태값 기반 soft color를 사용한다.
+- `random`: task seed 기반 deterministic random color를 사용한다.
+- random 모드는 주간 timeline, 주간 cardSection, 월간 progress bar, 월간 날짜 cell 업무 item에 동일하게 적용한다.
+- 같은 `taskId`는 view가 바뀌어도 같은 `wt-task-color-random-N` class를 사용한다.
+- `canEdit: false` 업무는 random 색상 class와 `wt-task-readonly` class를 함께 가져야 한다.
+- 색상 palette를 바꿀 때는 CSS의 `wt-task-color-random-*` class만 수정한다.
+
 ## Modal
 
 월간 보기에서 `... N` 클릭 시 표시되는 modal은 단순하고 업무용 화면에 어울리는 card형 popup으로 표시한다.
@@ -295,6 +308,7 @@ task bar는 업무 기간을 나타내는 핵심 요소다.
 - `body`, `table`, `button`, `div` 같은 전역 element selector에 직접 스타일을 주지 않는다.
 - Bootstrap, jQuery UI, 사내 공통 CSS와 충돌할 수 있는 이름을 피한다.
 - 상태 modifier는 `wt-task-status-*` 형식을 사용한다.
+- 랜덤 색상 modifier는 `wt-task-color-random-*` 형식을 사용한다.
 - root class 아래 scoped selector를 사용한다.
 
 예시:

@@ -90,6 +90,8 @@
         <button type="button" id="dragDisabledButton" class="wt-demo-button">드래그 잠금</button>
         <button type="button" id="defaultEditableFalseButton" class="wt-demo-button wt-demo-button-active">미지정 수정불가</button>
         <button type="button" id="defaultEditableTrueButton" class="wt-demo-button">미지정 수정가능</button>
+        <button type="button" id="statusColorButton" class="wt-demo-button wt-demo-button-active">상태 색상</button>
+        <button type="button" id="randomColorButton" class="wt-demo-button">랜덤 색상</button>
       </div>
       <div id="clickResult" class="wt-demo-result">업무 카드 또는 bar를 클릭하면 callback 결과가 여기에 표시됩니다.</div>
       <div id="workTimelineDemo"></div>
@@ -116,6 +118,9 @@
         <li>2026-06-05 금요일은 대체공휴일로 빨간색 계열과 휴일명이 표시되어야 합니다.</li>
         <li>2026-06-17 회사창립기념일도 월간에서 휴일 스타일과 휴일명이 표시되어야 합니다.</li>
         <li>weeklyDisplayMode 기본값은 timeline이며, demo는 cardSection으로 설정되어야 합니다.</li>
+        <li>색상 토글로 상태 기반 색상과 taskId 기준 랜덤 색상을 전환할 수 있어야 합니다.</li>
+        <li>랜덤 색상 모드에서 같은 taskId는 주간 cardSection과 월간 progress bar에서 같은 색상으로 보여야 합니다.</li>
+        <li>랜덤 색상 모드에서도 canEdit: false 업무는 수정 불가 스타일이 유지되어야 합니다.</li>
         <li>월간 업무는 날짜별 반복 item이 아니라 기간을 잇는 bar 형태로 표시되어야 합니다.</li>
         <li>월간 2026-06-04 날짜 cell에는 하루 업무 3개와 ... 1이 표시되어야 합니다.</li>
         <li>월간 2026-06-04의 ... 1을 누르면 6/4 숨김 하루 업무 1개만 modal에 표시되어야 합니다.</li>
@@ -546,17 +551,22 @@
 
       var enableTaskDrag = true;
       var defaultTaskEditable = false;
+      var taskColorMode = 'status';
       var $calendar = $('#workTimelineDemo');
       var enabledButton = document.getElementById('dragEnabledButton');
       var disabledButton = document.getElementById('dragDisabledButton');
       var defaultEditableFalseButton = document.getElementById('defaultEditableFalseButton');
       var defaultEditableTrueButton = document.getElementById('defaultEditableTrueButton');
+      var statusColorButton = document.getElementById('statusColorButton');
+      var randomColorButton = document.getElementById('randomColorButton');
 
       function updateDragButtons() {
         enabledButton.className = 'wt-demo-button' + (enableTaskDrag ? ' wt-demo-button-active' : '');
         disabledButton.className = 'wt-demo-button' + (!enableTaskDrag ? ' wt-demo-button-active' : '');
         defaultEditableFalseButton.className = 'wt-demo-button' + (!defaultTaskEditable ? ' wt-demo-button-active' : '');
         defaultEditableTrueButton.className = 'wt-demo-button' + (defaultTaskEditable ? ' wt-demo-button-active' : '');
+        statusColorButton.className = 'wt-demo-button' + (taskColorMode === 'status' ? ' wt-demo-button-active' : '');
+        randomColorButton.className = 'wt-demo-button' + (taskColorMode === 'random' ? ' wt-demo-button-active' : '');
       }
 
       function renderDemoCalendar() {
@@ -570,8 +580,8 @@
         document.getElementById('clickResult').textContent = (enableTaskDrag
           ? '현재 상태: 드래그 가능. '
           : '현재 상태: 드래그 잠금. ') + (defaultTaskEditable
-          ? 'canEdit 미지정 업무는 수정 가능합니다.'
-          : 'canEdit 미지정 업무는 수정 불가입니다.');
+          ? 'canEdit 미지정 업무는 수정 가능합니다. '
+          : 'canEdit 미지정 업무는 수정 불가입니다. ') + '색상 모드: ' + (taskColorMode === 'random' ? '랜덤(taskId 기준)' : '상태값 기준') + '.';
 
         $calendar.workTimeline({
           viewType: 'week',
@@ -587,6 +597,9 @@
           maxVisibleTasksPerDay: 3,
           maxVisibleTaskBarsPerWeek: 3,
           monthRangeBarMinDays: 2,
+          taskColorMode: taskColorMode,
+          randomTaskColorPaletteSize: 8,
+          taskColorSeedField: 'taskId',
           taskClickFunctionName: 'openTaskDetail',
           taskMoveFunctionName: 'onTaskMoveDummy',
           taskEndDateChangeFunctionName: 'onTaskEndDateChangeDummy',
@@ -616,6 +629,16 @@
 
       defaultEditableTrueButton.onclick = function () {
         defaultTaskEditable = true;
+        renderDemoCalendar();
+      };
+
+      statusColorButton.onclick = function () {
+        taskColorMode = 'status';
+        renderDemoCalendar();
+      };
+
+      randomColorButton.onclick = function () {
+        taskColorMode = 'random';
         renderDemoCalendar();
       };
 

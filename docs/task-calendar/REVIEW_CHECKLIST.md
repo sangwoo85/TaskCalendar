@@ -209,6 +209,19 @@ displayEndDate = min(task.endDate, visibleEndDate)
 - [ ] AJAX 요청 중 destroy된 instance가 DOM을 갱신하지 않는다.
 - [ ] 여러 instance가 같은 페이지에 있어도 event namespace가 충돌하지 않는다.
 
+
+## Task color mode
+
+- [ ] 기본 `taskColorMode`는 `status`이다.
+- [ ] `status` 모드에서는 기존 상태별 색상이 유지된다.
+- [ ] `random` 모드에서는 업무별 랜덤 색상이 적용된다.
+- [ ] 같은 `taskId`는 항상 같은 색상으로 표시된다.
+- [ ] 주간 timeline, 주간 cardSection, 월간 progress bar, 월간 날짜 cell 업무 item에 색상 정책이 모두 적용된다.
+- [ ] 주간 cardSection과 월간 progress bar에서 같은 `taskId` 색상이 일치한다.
+- [ ] 새로고침 후에도 같은 `taskId` 색상이 유지된다.
+- [ ] `canEdit=false` 업무의 readonly 스타일이 유지된다.
+- [ ] 랜덤 색상 class는 `wt-` prefix를 사용한다.
+
 ## CSS 충돌 여부
 
 - [ ] 모든 class가 `wt-` prefix를 사용한다.

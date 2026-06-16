@@ -222,6 +222,18 @@ spanDays = daysBetween(segmentStartDate, segmentEndDate) + 1
 - `setData(employees, tasks)` public method로 화면 데이터를 갱신할 수 있다.
 - direct data 방식에서도 날짜 겹침, stacking, 상태 표시 규칙은 동일하다.
 
+
+## 업무 색상 정책
+
+- 기본값 `taskColorMode: 'status'`는 기존 상태값 기반 색상을 유지한다.
+- `taskColorMode: 'random'`은 업무별 deterministic random 색상을 사용한다.
+- random 색상은 `taskColorSeedField` 값, 기본적으로 `task.taskId`를 기준으로 hash를 계산한다.
+- 같은 `taskId`는 주간 timeline, 주간 cardSection, 월간 progress bar, 월간 날짜 cell 업무 item에서 항상 같은 색상 class를 사용한다.
+- `taskId`가 없으면 `title + startDate + employeeId` 조합을 fallback seed로 사용한다.
+- JavaScript는 `wt-task-color-random-N` class만 계산하고 실제 색상값은 CSS에서 관리한다.
+- random 색상 class와 `wt-task-readonly`/`wt-task-editable` 같은 권한 class는 함께 적용되어야 한다.
+- random 모드에서도 업무 상태값은 `data-wt-status`, 화면 label, callback payload의 원본 task로 유지한다.
+
 ## Public methods
 
 현재 구현은 다음 method를 제공한다.
@@ -245,6 +257,9 @@ spanDays = daysBetween(segmentStartDate, segmentEndDate) + 1
 - `enableTaskDrag`: 주간 `cardSection` 업무 card/bar drag 시작일 변경 허용 여부, 기본값 `true`
 - `enableTaskEndDateEdit`: 주간 `cardSection` 업무 card/bar double click 종료일 변경 허용 여부, 기본값 `true`
 - `defaultTaskEditable`: task의 `canEdit`이 없을 때 수정 가능 여부, 기본값 `false`
+- `taskColorMode`: 업무 색상 정책, `status` 또는 `random`, 기본값 `status`
+- `randomTaskColorPaletteSize`: random 색상 class 개수, 기본값 `8`
+- `taskColorSeedField`: random 색상 계산 기준 field, 기본값 `taskId`
 - `taskClickFunctionName`: `onTaskClick`이 없을 때 호출할 전역 함수 이름, 기본값 `null`
 - `taskMoveFunctionName`: `onTaskMove`가 없을 때 cardSection drag 완료 후 호출할 전역 함수 이름, 기본값 `null`
 - `taskEndDateChangeFunctionName`: `onTaskEndDateChange`가 없을 때 cardSection 종료일 변경 후 호출할 전역 함수 이름, 기본값 `null`

@@ -28,6 +28,9 @@
     maxVisibleTasksPerDay: 3,
     maxVisibleTaskBarsPerWeek: 3,
     monthRangeBarMinDays: 2,
+    taskColorMode: 'status',
+    randomTaskColorPaletteSize: 8,
+    taskColorSeedField: 'taskId',
     taskClickFunctionName: null,
     taskMoveFunctionName: null,
     taskEndDateChangeFunctionName: null,
@@ -300,7 +303,7 @@
       var rowHeight = 46 + (laneCount * 30);
 
       employeeColumn.appendChild(renderEmployeeRow(employee, rowHeight));
-      body.appendChild(renderTimelineRow(employee, this.range, lanes, rowHeight, today, holidayMap));
+      body.appendChild(renderTimelineRow(employee, this.range, lanes, rowHeight, today, holidayMap, this.options));
     }
 
     timeline.appendChild(body);
@@ -336,7 +339,7 @@
 
     for (var laneIndex = 0; laneIndex < lanes.length; laneIndex += 1) {
       for (var taskIndex = 0; taskIndex < lanes[laneIndex].length; taskIndex += 1) {
-        wrap.appendChild(renderWeekRangeBar(lanes[laneIndex][taskIndex], laneIndex, employeeMap, this.range, this.canDragTask(lanes[laneIndex][taskIndex].task), this.isTaskEditable(lanes[laneIndex][taskIndex].task)));
+        wrap.appendChild(renderWeekRangeBar(lanes[laneIndex][taskIndex], laneIndex, employeeMap, this.range, this.options, this.canDragTask(lanes[laneIndex][taskIndex].task), this.isTaskEditable(lanes[laneIndex][taskIndex].task)));
       }
     }
 
@@ -414,7 +417,7 @@
 
     for (var laneIndex = 0; laneIndex < visibleLaneCount; laneIndex += 1) {
       for (var taskIndex = 0; taskIndex < lanes[laneIndex].length; taskIndex += 1) {
-        bars.appendChild(renderMonthSegmentBar(lanes[laneIndex][taskIndex], laneIndex, this.range, weekDays[0], weekDays[6]));
+        bars.appendChild(renderMonthSegmentBar(lanes[laneIndex][taskIndex], laneIndex, this.range, weekDays[0], weekDays[6], this.options));
       }
     }
 
@@ -442,7 +445,7 @@
     if (visibleDayTasks.length || hiddenDayTasks.length) {
       list = el('div', 'wt-month-day-task-list');
       for (var i = 0; i < visibleDayTasks.length; i += 1) {
-        list.appendChild(renderMonthDayTask(visibleDayTasks[i], dateText, this.range));
+        list.appendChild(renderMonthDayTask(visibleDayTasks[i], dateText, this.range, this.options));
       }
       if (hiddenDayTasks.length) {
         list.appendChild(renderMoreButton(dateText, hiddenDayTasks, dayTasks, holiday, 'wt-month-day-more wt-month-cell-more'));
@@ -1027,7 +1030,7 @@
     return row;
   }
 
-  function renderTimelineRow(employee, range, lanes, height, today, holidayMap) {
+  function renderTimelineRow(employee, range, lanes, height, today, holidayMap, options) {
     var row = el('div', 'wt-timeline-row');
     row.style.height = height + 'px';
 
@@ -1039,16 +1042,15 @@
 
     for (var laneIndex = 0; laneIndex < lanes.length; laneIndex += 1) {
       for (var taskIndex = 0; taskIndex < lanes[laneIndex].length; taskIndex += 1) {
-        row.appendChild(renderTaskBar(employee, lanes[laneIndex][taskIndex], laneIndex, range));
+        row.appendChild(renderTaskBar(employee, lanes[laneIndex][taskIndex], laneIndex, range, options));
       }
     }
 
     return row;
   }
 
-  function renderTaskBar(employee, item, laneIndex, range) {
-    var status = normalizeStatus(item.task.status);
-    var bar = button('wt-task-bar wt-task-clickable ' + statusClass(status), item.task.title || '');
+  function renderTaskBar(employee, item, laneIndex, range, options) {
+    var bar = button('wt-task-bar wt-task-clickable ' + getTaskColorClass(item.task, options), item.task.title || '');
     var dayCount = range.days.length;
     var left = (item.startOffset / dayCount) * 100;
     var width = ((item.endOffset - item.startOffset + 1) / dayCount) * 100;
@@ -1057,6 +1059,7 @@
     bar.style.width = width + '%';
     bar.style.top = (12 + laneIndex * 30) + 'px';
     bar.title = (item.task.title || '') + ' (' + item.displayStartDate + ' ~ ' + item.displayEndDate + ')';
+    bar.setAttribute('data-wt-status', normalizeStatus(item.task.status));
     bar.innerHTML = '<span class="wt-task-title">' + escapeHtml(item.task.title || '') + '</span>';
     bar.__wtTask = item.task;
     bar.__wtContext = {
@@ -1069,7 +1072,7 @@
     return bar;
   }
 
-  function renderWeekRangeBar(item, laneIndex, employeeMap, range, enableTaskDrag, isTaskEditable) {
+  function renderWeekRangeBar(item, laneIndex, employeeMap, range, options, enableTaskDrag, isTaskEditable) {
     var task = item.task;
     var status = normalizeStatus(task.status);
     var employee = employeeMap[task.employeeId];
@@ -1080,7 +1083,7 @@
       enableTaskDrag ? 'wt-week-card-draggable wt-task-drag-enabled' : 'wt-task-drag-disabled',
       isTaskEditable ? 'wt-task-editable' : 'wt-task-readonly',
       'wt-task-clickable',
-      statusClass(status),
+      getTaskColorClass(task, options),
       item.startsBeforeRange ? 'wt-week-range-bar-start' : '',
       item.endsAfterRange ? 'wt-week-range-bar-end' : '',
       item.spanDays === 1 ? 'wt-week-range-bar-single' : ''
@@ -1091,6 +1094,7 @@
       bar.setAttribute('draggable', 'true');
     }
     bar.setAttribute('data-wt-task-key', getTaskKey(task));
+    bar.setAttribute('data-wt-status', status);
     bar.style.left = 'calc(' + ((item.startOffset / range.days.length) * 100) + '% + 8px)';
     bar.style.width = 'calc(' + ((item.spanDays / range.days.length) * 100) + '% - 16px)';
     bar.style.top = (74 + laneIndex * 76) + 'px';
@@ -1128,13 +1132,14 @@
     return more;
   }
 
-  function renderMonthDayTask(task, dateText, range) {
+  function renderMonthDayTask(task, dateText, range, options) {
     var status = normalizeStatus(task.status);
     var owner = formatTaskOwner(task);
-    var node = button('wt-month-day-task wt-task-clickable ' + statusClass(status), '');
+    var node = button('wt-month-day-task wt-task-clickable ' + getTaskColorClass(task, options), '');
     var clippedRange = clipDateRange(task.startDate, task.endDate, range.startDate, range.endDate);
 
     node.title = '[' + owner + '] ' + (task.title || '') + ' (' + task.startDate + ' ~ ' + task.endDate + ')';
+    node.setAttribute('data-wt-status', status);
     node.innerHTML = '<span class="wt-month-day-task-owner">[' + escapeHtml(owner) + ']</span> <span class="wt-month-day-task-title">' + escapeHtml(task.title || '') + '</span>';
     node.__wtTask = task;
     node.__wtContext = {
@@ -1150,15 +1155,15 @@
     return node;
   }
 
-  function renderMonthSegmentBar(segment, laneIndex, range, weekStartDate, weekEndDate) {
+  function renderMonthSegmentBar(segment, laneIndex, range, weekStartDate, weekEndDate, options) {
     var task = segment.task;
-    var status = normalizeStatus(task.status);
     var owner = formatTaskOwner(task);
-    var node = button('wt-month-bar wt-task-clickable ' + statusClass(status), '');
+    var node = button('wt-month-bar wt-task-clickable ' + getTaskColorClass(task, options), '');
 
     node.style.gridColumn = (segment.startColumn + 1) + ' / span ' + segment.spanDays;
     node.style.gridRow = (laneIndex + 1);
     node.title = '[' + owner + '] ' + (task.title || '') + ' (' + segment.segmentStartDate + ' ~ ' + segment.segmentEndDate + ')';
+    node.setAttribute('data-wt-status', normalizeStatus(task.status));
     node.innerHTML = '<span class="wt-month-bar-owner">[' + escapeHtml(owner) + ']</span> <span class="wt-month-bar-title">' + escapeHtml(task.title || '') + '</span>';
     node.__wtTask = task;
     node.__wtContext = {
@@ -1702,6 +1707,48 @@
   function normalizeStatus(status) {
     var value = String(status || 'TODO').toUpperCase();
     return ['TODO', 'IN_PROGRESS', 'DONE', 'DELAYED', 'HOLD'].indexOf(value) >= 0 ? value : 'TODO';
+  }
+
+  /**
+   * 업무 색상 정책은 모든 view에서 같은 helper를 사용한다.
+   * status 모드는 기존 상태 class를, random 모드는 task seed 기반 deterministic class를 반환한다.
+   */
+  function getTaskColorClass(task, options) {
+    if (options && options.taskColorMode === 'random') {
+      return getRandomTaskColorClass(task, options);
+    }
+    return getStatusTaskColorClass(task);
+  }
+
+  function getStatusTaskColorClass(task) {
+    return statusClass(task && task.status);
+  }
+
+  function getRandomTaskColorClass(task, options) {
+    var paletteSize = Math.max(Number(options && options.randomTaskColorPaletteSize) || 8, 1);
+    var index = hashString(getTaskColorSeed(task, options)) % paletteSize;
+    return 'wt-task-color-random-' + index;
+  }
+
+  function getTaskColorSeed(task, options) {
+    var seedField = (options && options.taskColorSeedField) || 'taskId';
+    if (task && task[seedField] != null && task[seedField] !== '') {
+      return String(task[seedField]);
+    }
+    if (task && task.taskId != null && task.taskId !== '') {
+      return String(task.taskId);
+    }
+    return String((task && task.title) || '') + '|' + String((task && task.startDate) || '') + '|' + String((task && task.employeeId) || '');
+  }
+
+  function hashString(value) {
+    var hash = 0;
+    var text = String(value || '');
+    for (var i = 0; i < text.length; i += 1) {
+      hash = ((hash << 5) - hash) + text.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash);
   }
 
   /**

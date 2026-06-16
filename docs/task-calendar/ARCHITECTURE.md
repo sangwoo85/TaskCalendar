@@ -45,7 +45,8 @@ taskCalendar/
 - `normalizeHolidays()`는 유효한 `YYYY-MM-DD` 날짜와 `name`이 있는 휴일만 유지한다.
 - task는 렌더링 단계에서 `startDate`, `endDate` 유효성 및 기간 역전을 검사한다.
 - status는 `normalizeStatus()`로 허용 목록 외 값을 `TODO`로 처리한다.
-- status CSS class는 `statusClass()`에서만 생성하고, 실제 색상은 `work-timeline.css`가 담당한다.
+- status CSS class는 `statusClass()`에서 생성하고, 실제 색상은 `work-timeline.css`가 담당한다.
+- 업무 색상 정책은 `getTaskColorClass(task, options)`에서 status/random 모드를 분기한다.
 
 ## 공통 유틸 구조
 
@@ -53,6 +54,10 @@ taskCalendar/
 - `clipDateRange(startDate, endDate, visibleStartDate, visibleEndDate)`: 화면에 표시할 실제 bar 기간을 visible range 안으로 자른다.
 - `splitMonthTasks(tasks, monthRangeBarMinDays)`: 월간 progress bar 대상과 날짜 cell 목록 대상을 분리해 중복 표시를 막는다.
 - `invokeConfiguredCallback(instance, callbackName, functionNameOption, args)`: `onTaskClick` 같은 inline callback을 우선 호출하고, 없으면 JSP 전역 functionName fallback을 호출한다.
+- `getTaskColorClass(task, options)`: 모든 view의 업무 색상 class 계산 entry point다.
+- `getStatusTaskColorClass(task)`: status 값을 `wt-task-status-*` class로 변환한다.
+- `getRandomTaskColorClass(task, options)`: task seed hash를 `wt-task-color-random-N` class로 변환한다.
+- `hashString(value)`: deterministic random 색상을 위한 문자열 hash를 계산한다.
 - `statusClass(status)`: status 값을 안정적인 `wt-task-status-*` class로 변환한다.
 
 ## 주간 view 렌더링 흐름
@@ -247,6 +252,23 @@ grid-column-end = dayOfWeek(segmentEndDate) + 2
 ```
 
 현재 구현은 `grid-column: start / span spanDays`를 사용한다.
+
+
+## 업무 색상 class 계산 흐름
+
+```text
+render task
+  -> getTaskColorClass(task, options)
+  -> taskColorMode 확인
+  -> status: wt-task-status-* 반환
+  -> random: hash(seed) % randomTaskColorPaletteSize
+  -> wt-task-color-random-N 반환
+  -> DOM element class에 적용
+```
+
+random 모드의 기본 seed는 `task.taskId`다. `taskColorSeedField`가 지정되면 해당 field를 우선 사용하고, 값이 없으면 `taskId`, `title + startDate + employeeId` 순서로 fallback한다. 이 계산은 주간 timeline, 주간 cardSection, 월간 progress bar, 월간 날짜 cell 업무 item에서 같은 helper를 사용한다.
+
+색상 class와 권한 class는 분리되어 있다. 예를 들어 `taskColorMode: 'random'`이고 `canEdit: false`인 cardSection 업무는 `wt-task-color-random-N`과 `wt-task-readonly`를 함께 가진다. 상태값은 색상 class와 별개로 `data-wt-status`와 원본 task에 유지한다.
 
 ## 이벤트 바인딩 구조
 

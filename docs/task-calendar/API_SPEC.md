@@ -14,7 +14,7 @@
 - 업무 시작일과 종료일은 모두 포함한다.
 - 시간, 분, 초, timezone, timestamp 기반 계산은 사용하지 않는다.
 - 업무 조회는 주간/월간 모두 같은 overlap 조건을 사용한다.
-- `weeklyDisplayMode`는 클라이언트 렌더링 option이며 API 필수 parameter가 아니다.
+- `weeklyDisplayMode`, `taskColorMode`는 클라이언트 렌더링 option이며 API 필수 parameter가 아니다.
 
 ## 전체 response 구조
 
@@ -165,6 +165,17 @@ GET /api/tasks/timeline?viewType=month&startDate=2026-06-01&endDate=2026-06-30
 월간 progress bar와 날짜 cell 목록 분리는 API가 아니라 클라이언트 표시 옵션인 `monthRangeBarMinDays`로 결정한다. 기본값 `2`에서는 2일 이상 업무는 progress bar 대상이고, 하루짜리 업무는 날짜 cell 목록 대상이다. progress bar 대상 업무는 날짜 cell 목록, `... N` 계산, `... N` modal에서 제외한다.
 
 월간 `... N` 표시 여부는 `maxVisibleTasksPerDay`로 결정한다. 기준은 week row 전체가 아니라 날짜 cell 하나이며, 해당 날짜의 day-list 업무 포함 조건은 `task.startDate <= currentDate AND task.endDate >= currentDate`이다. `onMoreClick(date, hiddenTasks, allTasks)`의 `date`, `hiddenTasks`, `allTasks`도 클릭한 날짜의 day-list 업무 기준으로 전달한다.
+
+
+## 색상 표시와 API 관계
+
+`taskColorMode`는 클라이언트 표시 옵션이다. API response field를 변경하지 않는다.
+
+- `taskColorMode: 'status'`: task의 `status` 값을 기준으로 기존 상태 색상을 표시한다.
+- `taskColorMode: 'random'`: 기본적으로 task의 `taskId`를 seed로 사용해 deterministic random 색상 class를 계산한다.
+- 같은 `taskId`는 새로고침, 주간/월간 view 전환 후에도 같은 색상 class를 사용한다.
+- `taskId`가 없으면 클라이언트가 `title + startDate + employeeId` 조합을 fallback seed로 사용한다.
+- 서버는 random 색상값을 내려줄 필요가 없으며, 실제 색상 palette는 CSS에서 관리한다.
 
 ## Backend query condition
 

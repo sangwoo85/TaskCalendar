@@ -29,6 +29,9 @@
   maxVisibleTasksPerDay: 3,
   maxVisibleTaskBarsPerWeek: 3,
   monthRangeBarMinDays: 2,
+  taskColorMode: 'status',
+  randomTaskColorPaletteSize: 8,
+  taskColorSeedField: 'taskId',
   taskClickFunctionName: null,
   taskMoveFunctionName: null,
   taskEndDateChangeFunctionName: null,
@@ -59,6 +62,9 @@
 | `maxVisibleTasksPerDay` | 구현 | 월간 날짜 cell 하나에 표시할 day-list 업무 label 최대 개수 |
 | `maxVisibleTaskBarsPerWeek` | 구현 | 월간 week row에 표시할 bar lane 최대 개수 |
 | `monthRangeBarMinDays` | 구현 | 월간 progress bar로 표시할 최소 업무 기간 일수. 기본값 `2` |
+| `taskColorMode` | 구현 | 업무 색상 정책. `status` 또는 `random`, 기본값 `status` |
+| `randomTaskColorPaletteSize` | 구현 | `wt-task-color-random-N` palette class 개수. 기본값 `8` |
+| `taskColorSeedField` | 구현 | random 색상 계산 기준 task field. 기본값 `taskId` |
 | `taskClickFunctionName` | 구현 | `onTaskClick`이 없을 때 호출할 전역 함수 이름 |
 | `taskMoveFunctionName` | 구현 | `onTaskMove`가 없을 때 cardSection drag 완료 후 호출할 전역 함수 이름 |
 | `taskEndDateChangeFunctionName` | 구현 | `onTaskEndDateChange`가 없을 때 cardSection 종료일 변경 후 호출할 전역 함수 이름 |
@@ -129,6 +135,44 @@ wt-task-status-hold
 ```
 
 JavaScript에 색상값을 hard-code하지 않는다.
+
+
+## 업무 색상 모드와 palette 수정 방법
+
+`taskColorMode`는 모든 업무 표시 요소의 색상 class 계산에 적용된다.
+
+```javascript
+$('#taskCalendar').workTimeline({
+  taskColorMode: 'random',
+  taskColorSeedField: 'taskId',
+  randomTaskColorPaletteSize: 8,
+  tasks: demoTasks,
+  employees: demoEmployees
+});
+```
+
+- `status`: 기존 `wt-task-status-*` class를 사용한다.
+- `random`: `taskId` 기준 hash로 `wt-task-color-random-N` class를 사용한다.
+- 같은 `taskId`는 주간/월간과 새로고침 후에도 같은 class를 사용한다.
+- `canEdit: false` 업무는 random 색상 class와 `wt-task-readonly` class가 함께 적용된다.
+
+랜덤 palette는 CSS에서 수정한다. JavaScript에 hex 색상값을 추가하지 않는다.
+
+```css
+.wt-root .wt-task-color-random-0 {
+  border-color: #bfdbfe;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.wt-root .wt-task-color-random-1 {
+  border-color: #bbf7d0;
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.wt-root .wt-task-color-random-2 { ... }
+```
 
 ## 월간 `... N` 표시 개수 수정 방법
 

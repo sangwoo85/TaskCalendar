@@ -84,6 +84,7 @@ $('#taskCalendar').workTimeline({
   enableTaskDrag: true,
   enableTaskEndDateEdit: true,
   defaultTaskEditable: false,
+  taskColorMode: 'random',
   visibleStartDate: '2026-06-01',
   visibleEndDate: '2026-06-07',
   todayDate: '2026-06-04',
@@ -306,6 +307,33 @@ $('#taskCalendar').workTimeline({
   }
 });
 ```
+
+
+## 업무 색상 모드 사용 예시
+
+기본값은 기존 동작과 같은 상태 기반 색상이다.
+
+```javascript
+$('#taskCalendar').workTimeline({
+  taskColorMode: 'status',
+  tasks: demoTasks,
+  employees: demoEmployees
+});
+```
+
+업무별 deterministic random 색상을 사용하려면 `random`으로 변경한다.
+
+```javascript
+$('#taskCalendar').workTimeline({
+  taskColorMode: 'random',
+  taskColorSeedField: 'taskId',
+  randomTaskColorPaletteSize: 8,
+  tasks: demoTasks,
+  employees: demoEmployees
+});
+```
+
+같은 `taskId`는 주간/월간 view와 새로고침 후에도 같은 `wt-task-color-random-N` class를 사용한다. random 모드에서도 `canEdit: false` 업무의 readonly 스타일은 유지된다.
 
 ## `... N` 큰 창 확인 방법
 
