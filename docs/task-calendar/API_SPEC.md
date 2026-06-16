@@ -4,9 +4,11 @@
 
 현재 `workTimeline` MVP는 `employees`, `tasks`, `holidays` 배열을 직접 주입하는 방식으로 동작한다.
 
-`apiUrl` option은 구조만 있으며 실제 AJAX loading은 아직 미구현이다. 이 문서는 Spring Boot API를 붙일 때 맞춰야 할 권장 JSON 계약과, 현재 direct data가 실제로 요구하는 필드 구조를 함께 정리한다.
+`apiUrl` option은 구조만 있으며 실제 AJAX loading은 아직 미구현이다. 현재 기간 변경 데이터 조회는 `enableRemoteDataLoad`와 사용자가 등록한 custom function을 통해 처리한다. 이 문서는 Spring Boot API를 붙일 때 맞춰야 할 권장 JSON 계약과, 현재 direct data가 실제로 요구하는 필드 구조를 함께 정리한다.
 
 현재 구현에서 `workTimeline`이 직접 호출하는 저장 API는 없다. drag/drop, double click으로 변경된 날짜 저장은 callback을 받은 업무 시스템이 별도로 처리한다.
+
+`workTimeline`은 기간 변경 조회 API URL도 직접 알 필요가 없다. `prev`, `next`, `today`, view 전환, `reload()` 시 `onRangeChange(payload)` 또는 `rangeChangeFunctionName(payload)`를 호출하고, 실제 AJAX 요청은 해당 custom function 내부에서 수행한다.
 
 ## 기본 원칙
 
@@ -166,6 +168,41 @@ GET /api/tasks/timeline?viewType=month&startDate=2026-06-01&endDate=2026-06-30
 
 월간 `... N` 표시 여부는 `maxVisibleTasksPerDay`로 결정한다. 기준은 week row 전체가 아니라 날짜 cell 하나이며, 해당 날짜의 day-list 업무 포함 조건은 `task.startDate <= currentDate AND task.endDate >= currentDate`이다. `onMoreClick(date, hiddenTasks, allTasks)`의 `date`, `hiddenTasks`, `allTasks`도 클릭한 날짜의 day-list 업무 기준으로 전달한다.
 
+## 기간 변경 custom function 응답
+
+`enableRemoteDataLoad: true`이면 기간 변경 시 custom function은 Promise/jqXHR 또는 일반 object를 반환할 수 있다.
+
+```javascript
+function loadTaskCalendarData(payload) {
+  return $.ajax({
+    url: '/api/task-calendar/tasks',
+    method: 'GET',
+    dataType: 'json',
+    data: {
+      viewType: payload.viewType,
+      startDate: payload.visibleStartDate,
+      endDate: payload.visibleEndDate
+    }
+  });
+}
+```
+
+응답 구조는 다음 필드를 지원한다.
+
+```json
+{
+  "success": true,
+  "employees": [],
+  "tasks": [],
+  "holidays": []
+}
+```
+
+- `success`는 선택 필드다.
+- `success === false`이면 데이터를 갱신하지 않고 기존 화면 데이터를 유지한다.
+- `employees`, `tasks`, `holidays` 중 응답에 포함된 필드만 내부 데이터에 반영한다.
+- `tasks: []`처럼 빈 배열이 명시되면 해당 데이터를 빈 배열로 갱신한다.
+- API 실패나 Promise reject 시 기존 데이터를 유지하고 `console.warn`만 수행한다.
 
 ## 색상 표시와 API 관계
 

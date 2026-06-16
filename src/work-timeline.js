@@ -23,6 +23,7 @@
     tasks: [],
     holidays: [],
     apiUrl: null,
+    enableRemoteDataLoad: false,
     employeeColumnWidth: 220,
     dayCellMinWidth: 96,
     maxVisibleTasksPerDay: 3,
@@ -34,6 +35,7 @@
     taskClickFunctionName: null,
     taskMoveFunctionName: null,
     taskEndDateChangeFunctionName: null,
+    rangeChangeFunctionName: null,
     labels: {
       employee: '직원',
       prev: '이전',
@@ -70,6 +72,8 @@
     this.dragState = null;
     this.taskClickTimer = null;
     this.suppressTaskClickUntil = 0;
+    this.rangeRequestId = 0;
+    this.isRemoteLoading = false;
     this.destroyed = false;
     this.render();
     call(this.options.onInit, this, [this]);
@@ -89,7 +93,7 @@
     this.element.innerHTML = '';
     this.element.appendChild(this.renderToolbar());
 
-    if (this.options.apiUrl) {
+    if (this.options.apiUrl && !this.options.enableRemoteDataLoad) {
       this.element.appendChild(this.renderState('wt-state-pending', this.options.labels.apiPending));
       this.bindToolbarEvents();
       return this;
@@ -108,10 +112,13 @@
   };
 
   /**
-   * Rerender direct data mode.
-   * apiUrl based fetching is intentionally left pending in the current MVP.
+   * Rerender direct data mode or invoke the remote range loader when enabled.
+   * apiUrl based fetching remains intentionally pending in the current MVP.
    */
   WorkTimeline.prototype.reload = function () {
+    if (this.options.enableRemoteDataLoad) {
+      return this.loadRemoteData('reload', this.getRangeSnapshot());
+    }
     if (!this.options.apiUrl) {
       return this.render();
     }
@@ -119,13 +126,13 @@
   };
 
   /**
-   * Change view without changing direct data.
-   * Consumers that need server data should load it from onRangeChange.
+   * Change view and optionally ask the consumer's range loader for fresh data.
    */
   WorkTimeline.prototype.setView = function (viewType) {
+    var previousRange = this.getRangeSnapshot();
     this.viewType = viewType === 'month' ? 'month' : 'week';
     this.render();
-    call(this.options.onRangeChange, this, [this.getRangeContext(), this]);
+    this.handleRangeChanged('viewChange', previousRange);
     return this;
   };
 
@@ -137,11 +144,12 @@
     if (!isDateOnly(dateText)) {
       return this.fail('INVALID_DATE_FORMAT', 'date must be YYYY-MM-DD.');
     }
+    var previousRange = this.getRangeSnapshot();
     this.currentDate = dateText;
     this.options.visibleStartDate = null;
     this.options.visibleEndDate = null;
     this.render();
-    call(this.options.onRangeChange, this, [this.getRangeContext(), this]);
+    this.handleRangeChanged('goTo', previousRange);
     return this;
   };
 
@@ -165,20 +173,22 @@
    * Move to todayDate and let the view recalculate its visible range.
    */
   WorkTimeline.prototype.today = function () {
+    var previousRange = this.getRangeSnapshot();
     this.currentDate = this.options.todayDate || formatToday();
     this.options.visibleStartDate = null;
     this.options.visibleEndDate = null;
     this.render();
-    call(this.options.onRangeChange, this, [this.getRangeContext(), this]);
+    this.handleRangeChanged('today', previousRange);
     return this;
   };
 
   WorkTimeline.prototype.move = function (dayAmount) {
+    var previousRange = this.getRangeSnapshot();
     this.currentDate = this.viewType === 'month' ? addMonths(this.currentDate, dayAmount) : addDays(this.currentDate, dayAmount);
     this.options.visibleStartDate = null;
     this.options.visibleEndDate = null;
     this.render();
-    call(this.options.onRangeChange, this, [this.getRangeContext(), this]);
+    this.handleRangeChanged(dayAmount < 0 ? 'prev' : 'next', previousRange);
   };
 
   /**
@@ -239,6 +249,141 @@
       startDate: this.range.startDate,
       endDate: this.range.endDate
     };
+  };
+
+  WorkTimeline.prototype.getRangeSnapshot = function () {
+    var range = this.range || this.getVisibleRange();
+    return {
+      startDate: range.startDate,
+      endDate: range.endDate
+    };
+  };
+
+  WorkTimeline.prototype.buildRangeChangePayload = function (action, previousRange) {
+    return {
+      viewType: this.viewType,
+      weeklyDisplayMode: this.getWeeklyDisplayMode(),
+      visibleStartDate: this.range.startDate,
+      visibleEndDate: this.range.endDate,
+      baseDate: this.currentDate,
+      action: action,
+      previousVisibleStartDate: previousRange ? previousRange.startDate : '',
+      previousVisibleEndDate: previousRange ? previousRange.endDate : ''
+    };
+  };
+
+  WorkTimeline.prototype.handleRangeChanged = function (action, previousRange) {
+    if (this.options.enableRemoteDataLoad) {
+      this.loadRemoteData(action, previousRange);
+      return;
+    }
+    call(this.options.onRangeChange, this, [this.getRangeContext(), this]);
+  };
+
+  WorkTimeline.prototype.loadRemoteData = function (action, previousRange) {
+    var payload = this.buildRangeChangePayload(action, previousRange || this.getRangeSnapshot());
+    var loaderResult;
+    var requestId;
+
+    if (!this.options.enableRemoteDataLoad) {
+      return this.render();
+    }
+
+    requestId = ++this.rangeRequestId;
+    loaderResult = this.invokeRangeChangeLoader(payload);
+    if (loaderResult == null) {
+      this.setRemoteLoading(false);
+      return this;
+    }
+
+    this.setRemoteLoading(true);
+    if (isPromiseLike(loaderResult)) {
+      this.resolveRemoteData(loaderResult, requestId);
+    } else {
+      this.applyRemoteDataResponse(loaderResult, requestId);
+    }
+    return this;
+  };
+
+  WorkTimeline.prototype.invokeRangeChangeLoader = function (payload) {
+    var functionName = this.options.rangeChangeFunctionName;
+    try {
+      if (typeof this.options.onRangeChange === 'function') {
+        return this.options.onRangeChange.call(this, payload);
+      }
+      if (functionName && typeof window[functionName] === 'function') {
+        return window[functionName](payload);
+      }
+    } catch (error) {
+      this.warnRemoteDataError(error);
+    }
+    return null;
+  };
+
+  WorkTimeline.prototype.resolveRemoteData = function (loaderResult, requestId) {
+    var self = this;
+    loaderResult.then(function (response) {
+      self.applyRemoteDataResponse(response, requestId);
+    }, function (error) {
+      self.handleRemoteDataFailure(error, requestId);
+    });
+  };
+
+  WorkTimeline.prototype.applyRemoteDataResponse = function (response, requestId) {
+    if (requestId !== this.rangeRequestId || this.destroyed) {
+      return this;
+    }
+    this.setRemoteLoading(false);
+    if (!response || typeof response !== 'object') {
+      return this;
+    }
+    if (response.success === false) {
+      this.warnRemoteDataError(response.error || response);
+      return this;
+    }
+    this.updateDataFromResponse(response);
+    this.render();
+    call(this.options.onDataLoaded, this, [response, this]);
+    return this;
+  };
+
+  WorkTimeline.prototype.updateDataFromResponse = function (response) {
+    if (Object.prototype.hasOwnProperty.call(response, 'employees')) {
+      this.employees = arrayOrEmpty(response.employees);
+      this.options.employees = this.employees;
+    }
+    if (Object.prototype.hasOwnProperty.call(response, 'tasks')) {
+      this.tasks = arrayOrEmpty(response.tasks);
+      this.options.tasks = this.tasks;
+    }
+    if (Object.prototype.hasOwnProperty.call(response, 'holidays')) {
+      this.holidays = normalizeHolidays(response.holidays);
+      this.options.holidays = this.holidays;
+    }
+  };
+
+  WorkTimeline.prototype.handleRemoteDataFailure = function (error, requestId) {
+    if (requestId !== this.rangeRequestId || this.destroyed) {
+      return;
+    }
+    this.setRemoteLoading(false);
+    this.warnRemoteDataError(error);
+  };
+
+  WorkTimeline.prototype.warnRemoteDataError = function (error) {
+    if (window.console && typeof window.console.warn === 'function') {
+      window.console.warn('workTimeline remote data loading failed.', error);
+    }
+  };
+
+  WorkTimeline.prototype.setRemoteLoading = function (isLoading) {
+    this.isRemoteLoading = isLoading === true;
+    if (this.isRemoteLoading) {
+      this.element.className = mergeClass(this.element.className, 'wt-loading wt-calendar-loading');
+    } else {
+      removeClass(this.element, 'wt-loading');
+      removeClass(this.element, 'wt-calendar-loading');
+    }
   };
 
   WorkTimeline.prototype.getWeeklyDisplayMode = function () {
@@ -1380,6 +1525,10 @@
    */
   function isTaskOverlapping(task, visibleStartDate, visibleEndDate) {
     return task.startDate <= visibleEndDate && task.endDate >= visibleStartDate;
+  }
+
+  function isPromiseLike(value) {
+    return value && typeof value.then === 'function';
   }
 
   /**

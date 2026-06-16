@@ -39,6 +39,28 @@ taskCalendar/
 6. `render()` 실행
 7. `onInit(instance)` 호출
 
+## 기간 변경 remote data 흐름
+
+`enableRemoteDataLoad: true`이면 `prev`, `next`, `today`, `setView`, `goTo`, `reload()` 이후 custom function을 호출해 데이터를 갱신할 수 있다.
+
+```text
+기간 변경
+  -> 새 visible range 계산
+  -> render()로 변경된 기간 shell 표시
+  -> buildRangeChangePayload(action, previousRange)
+  -> onRangeChange(payload) 우선 호출
+  -> 없으면 window[rangeChangeFunctionName](payload) 호출
+  -> Promise/jqXHR 또는 object 응답 처리
+  -> 응답에 포함된 employees/tasks/holidays만 갱신
+  -> render() 재실행
+```
+
+`workTimeline`은 API URL을 직접 알지 않는다. 실제 서버 호출은 custom function 내부에서 처리한다.
+
+중복 요청은 `rangeRequestId`로 제어한다. 요청마다 id를 증가시키고, 응답 시점의 id가 최신 id와 다르면 오래된 응답으로 보고 화면에 반영하지 않는다.
+
+loading 중에는 root element에 `wt-loading wt-calendar-loading` class를 추가하고, 완료/실패 시 제거한다. 실패 또는 `success === false` 응답은 기존 데이터를 유지하고 `console.warn`만 수행한다.
+
 ## 데이터 정규화 흐름
 
 - `arrayOrEmpty()`로 배열 option을 방어적으로 처리한다.
@@ -55,6 +77,9 @@ taskCalendar/
 - `formatTaskDateRange(startDate, endDate)`: 업무 기간 표시 문자열을 만든다. 시작일과 종료일이 같으면 날짜를 한 번만 반환한다.
 - `splitMonthTasks(tasks, monthRangeBarMinDays)`: 월간 progress bar 대상과 날짜 cell 목록 대상을 분리해 중복 표시를 막는다.
 - `invokeConfiguredCallback(instance, callbackName, functionNameOption, args)`: `onTaskClick` 같은 inline callback을 우선 호출하고, 없으면 JSP 전역 functionName fallback을 호출한다.
+- `buildRangeChangePayload(action, previousRange)`: 기간 변경 custom function에 전달할 payload를 만든다.
+- `loadRemoteData(action, previousRange)`: 기간 변경 데이터 로딩 custom function을 호출하고 응답을 처리한다.
+- `updateDataFromResponse(response)`: 응답에 포함된 `employees`, `tasks`, `holidays`만 내부 데이터에 반영한다.
 - `getTaskColorClass(task, options)`: 모든 view의 업무 색상 class 계산 entry point다.
 - `getStatusTaskColorClass(task)`: status 값을 `wt-task-status-*` class로 변환한다.
 - `getRandomTaskColorClass(task, options)`: task seed hash를 `wt-task-color-random-N` class로 변환한다.

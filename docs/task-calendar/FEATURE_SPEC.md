@@ -92,8 +92,29 @@
 - `prev`: 현재 view 기준으로 이전 주 또는 이전 달로 이동한다.
 - `next`: 현재 view 기준으로 다음 주 또는 다음 달로 이동한다.
 - `today`: 오늘 날짜가 포함된 주 또는 월로 이동한다.
-- 이동 후 데이터 로딩이 필요한 경우 향후 `apiUrl` loading을 다시 호출한다. 현재 MVP에서는 direct data를 다시 렌더링한다.
-- 이동 후 `onRangeChange` callback을 호출한다.
+- `enableRemoteDataLoad: false`이면 기존 direct data 기준으로 다시 렌더링한다.
+- `enableRemoteDataLoad: true`이면 표시 기간 변경 후 `onRangeChange(payload)` 또는 `rangeChangeFunctionName(payload)` custom function을 호출해 새 데이터를 받을 수 있다.
+- custom function이 정상 데이터를 반환하면 응답에 포함된 `employees`, `tasks`, `holidays` 필드만 내부 데이터에 반영하고 현재 view를 다시 렌더링한다.
+- custom function이 값을 반환하지 않거나 실패하면 기존 데이터를 유지한다.
+- 빠른 이전/다음 클릭으로 요청이 겹치면 마지막 요청 결과만 반영한다.
+- `reload()`는 현재 visible range 기준으로 remote custom function을 다시 호출할 수 있다.
+
+### 기간 변경 remote data payload
+
+```javascript
+{
+  viewType: 'month',
+  weeklyDisplayMode: 'cardSection',
+  visibleStartDate: '2026-06-01',
+  visibleEndDate: '2026-06-30',
+  baseDate: '2026-06-01',
+  action: 'next',
+  previousVisibleStartDate: '2026-05-01',
+  previousVisibleEndDate: '2026-05-31'
+}
+```
+
+`action`은 `prev`, `next`, `today`, `viewChange`, `goTo`, `reload` 중 하나다. `taskCalendar`는 서버 API URL을 직접 알 필요가 없으며 실제 AJAX/API 호출은 custom function 내부에서 처리한다.
 
 ## 직원 row
 
@@ -228,7 +249,7 @@ spanDays = daysBetween(segmentStartDate, segmentEndDate) + 1
 ## 데이터 로딩 방식
 
 ### API loading
-- `apiUrl` 옵션이 있으면 view range 변경 시 HTTP GET 요청으로 데이터를 가져오는 구조를 목표로 한다.
+- `apiUrl` 자동 HTTP GET loading은 아직 미구현이다. 현재 기간 변경 데이터 조회는 `enableRemoteDataLoad`와 custom function으로 처리한다.
 - 현재 MVP에서는 실제 AJAX 요청은 미구현이며 pending/error 상태 구조만 준비되어 있다.
 - 요청 parameter는 `API_SPEC.md`를 따른다.
 - 로딩 중에는 loading 상태를 표시한다.
@@ -256,7 +277,7 @@ spanDays = daysBetween(segmentStartDate, segmentEndDate) + 1
 현재 구현은 다음 method를 제공한다.
 
 - `render()`: 현재 옵션과 데이터로 다시 렌더링한다.
-- `reload()`: direct data 모드에서는 현재 데이터로 다시 렌더링한다. `apiUrl` 기반 실제 재조회는 미구현이다.
+- `reload()`: direct data 모드에서는 현재 데이터로 다시 렌더링한다. `enableRemoteDataLoad: true`이면 현재 visible range 기준으로 custom function을 다시 호출한다.
 - `setView(viewType)`: `week` 또는 `month`로 view를 변경한다.
 - `goTo(date)`: 지정한 `YYYY-MM-DD` 날짜가 포함된 view range로 이동한다.
 - `prev()`: 이전 주 또는 이전 달로 이동한다.
@@ -274,18 +295,20 @@ spanDays = daysBetween(segmentStartDate, segmentEndDate) + 1
 - `enableTaskDrag`: 주간 `cardSection` 업무 card/bar drag 시작일 변경 허용 여부, 기본값 `true`
 - `enableTaskEndDateEdit`: 주간 `cardSection` 업무 card/bar double click 종료일 변경 허용 여부, 기본값 `true`
 - `defaultTaskEditable`: task의 `canEdit`이 없을 때 수정 가능 여부, 기본값 `false`
+- `enableRemoteDataLoad`: 기간 변경 시 custom function으로 데이터 재조회 허용 여부, 기본값 `false`
 - `taskColorMode`: 업무 색상 정책, `status` 또는 `random`, 기본값 `status`
 - `randomTaskColorPaletteSize`: random 색상 class 개수, 기본값 `8`
 - `taskColorSeedField`: random 색상 계산 기준 field, 기본값 `taskId`
 - `taskClickFunctionName`: `onTaskClick`이 없을 때 호출할 전역 함수 이름, 기본값 `null`
 - `taskMoveFunctionName`: `onTaskMove`가 없을 때 cardSection drag 완료 후 호출할 전역 함수 이름, 기본값 `null`
 - `taskEndDateChangeFunctionName`: `onTaskEndDateChange`가 없을 때 cardSection 종료일 변경 후 호출할 전역 함수 이름, 기본값 `null`
+- `rangeChangeFunctionName`: `enableRemoteDataLoad: true`이고 `onRangeChange`가 없을 때 호출할 전역 데이터 로딩 함수 이름, 기본값 `null`
 - `holidays`: 휴일 목록, 기본값 `[]`
 
 ## Callbacks
 
 - `onInit(instance)`: 초기화 완료 후 호출한다.
-- `onRangeChange(range, instance)`: view range가 변경된 후 호출한다.
+- `onRangeChange(payload)`: `enableRemoteDataLoad: true`이면 기간 변경 데이터 로더로 호출한다. Promise/jqXHR 또는 object를 반환할 수 있다. `enableRemoteDataLoad: false`에서는 기존 호환을 위해 `onRangeChange(range, instance)` 형태의 알림 callback으로 호출한다.
 - `onDataLoaded(data, instance)`: 데이터 로딩 성공 후 호출한다.
 - `onTaskClick(task, payload, event)`: 업무 bar 클릭 시 호출한다. 첫 번째 인자 `task`는 기존 호환을 위해 유지한다.
 - `onTaskMove(payload)`: 주간 cardSection에서 업무 card/bar drag 완료 후 호출한다.

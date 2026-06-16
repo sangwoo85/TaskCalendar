@@ -168,8 +168,19 @@ displayEndDate = min(task.endDate, visibleEndDate)
 
 ## API loading
 
-- [ ] `apiUrl` 방식 실제 데이터 로딩은 현재 미구현임을 문서와 화면에서 명확히 표시한다.
-- [ ] 향후 API loading 구현 시에는 `apiUrl` 방식으로 데이터 로딩이 가능해야 한다.
+- [ ] `apiUrl` 방식 자동 AJAX loading은 현재 미구현임을 문서와 화면에서 명확히 표시한다.
+- [ ] `enableRemoteDataLoad=false`이면 기존처럼 direct data 기준으로 동작한다.
+- [ ] `enableRemoteDataLoad=true`이면 이전/다음 기간 변경 시 custom function이 호출된다.
+- [ ] `onRangeChange`가 `rangeChangeFunctionName`보다 우선 호출된다.
+- [ ] payload에 `viewType`, `visibleStartDate`, `visibleEndDate`, `action`이 포함된다.
+- [ ] custom function이 jqXHR/Promise를 반환하면 완료 후 데이터를 갱신한다.
+- [ ] custom function이 object를 반환해도 데이터를 갱신한다.
+- [ ] response에 포함된 `employees`, `tasks`, `holidays` 필드만 갱신한다.
+- [ ] `response.tasks=[]`이면 업무 없는 캘린더가 표시된다.
+- [ ] `success === false`이면 기존 데이터가 유지된다.
+- [ ] API 실패 시 기존 데이터가 유지되고 캘린더가 깨지지 않는다.
+- [ ] 빠른 prev/next 클릭 시 오래된 응답이 마지막 화면을 덮어쓰지 않는다.
+- [ ] 월간/주간 모두 기간 변경 데이터 조회가 동작한다.
 - [ ] request parameter에 `viewType`, `startDate`, `endDate`가 포함된다.
 - [ ] API 응답의 `employees`, `tasks`, `range`를 검증한다.
 - [ ] loading 상태가 표시된다.

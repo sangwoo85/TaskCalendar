@@ -27,6 +27,17 @@
   box-sizing: border-box;
 }
 
+.wt-root.wt-loading {
+  cursor: progress;
+}
+
+.wt-root.wt-loading .wt-toolbar,
+.wt-root.wt-loading .wt-grid,
+.wt-root.wt-loading .wt-week-card-sections,
+.wt-root.wt-loading .wt-month {
+  opacity: 0.72;
+}
+
 .wt-root .wt-toolbar {
   display: flex;
   align-items: center;

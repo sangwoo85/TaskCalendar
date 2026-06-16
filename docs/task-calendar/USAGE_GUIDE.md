@@ -337,6 +337,60 @@ $('#taskCalendar').workTimeline({
 
 같은 `taskId`는 주간/월간 view와 새로고침 후에도 같은 `wt-task-color-random-N` class를 사용한다. random 모드에서도 `canEdit: false` 업무의 readonly 스타일은 유지된다.
 
+## 기간 변경 시 custom function으로 데이터 로딩
+
+`enableRemoteDataLoad: true`를 사용하면 이전/다음/오늘, 주간/월간 전환, `reload()` 시 custom function을 호출해 새 데이터를 받을 수 있다. `workTimeline`은 API URL을 직접 알지 않고, 실제 AJAX 호출은 업무 시스템의 function 안에서 처리한다.
+
+전역 함수명 방식:
+
+```javascript
+function loadTaskCalendarData(payload) {
+  return $.ajax({
+    url: '/api/task-calendar/tasks',
+    method: 'GET',
+    dataType: 'json',
+    data: {
+      viewType: payload.viewType,
+      startDate: payload.visibleStartDate,
+      endDate: payload.visibleEndDate
+    }
+  });
+}
+
+$('#taskCalendar').workTimeline({
+  viewType: 'month',
+  enableRemoteDataLoad: true,
+  rangeChangeFunctionName: 'loadTaskCalendarData',
+  taskClickFunctionName: 'openTaskDetail',
+  taskMoveFunctionName: 'onTaskMoveDummy',
+  taskEndDateChangeFunctionName: 'onTaskEndDateChangeDummy'
+});
+```
+
+callback 방식:
+
+```javascript
+$('#taskCalendar').workTimeline({
+  viewType: 'week',
+  weeklyDisplayMode: 'cardSection',
+  enableRemoteDataLoad: true,
+  onRangeChange: function (payload) {
+    return $.ajax({
+      url: '/api/task-calendar/tasks',
+      method: 'GET',
+      dataType: 'json',
+      data: {
+        viewType: payload.viewType,
+        startDate: payload.visibleStartDate,
+        endDate: payload.visibleEndDate
+      }
+    });
+  }
+});
+```
+
+`payload`에는 `viewType`, `weeklyDisplayMode`, `visibleStartDate`, `visibleEndDate`, `baseDate`, `action`, `previousVisibleStartDate`, `previousVisibleEndDate`가 포함된다. custom function이 Promise/jqXHR 또는 `{ employees, tasks, holidays }` object를 반환하면 응답에 포함된 필드만 내부 데이터에 반영한다. 반환값이 없거나 실패하면 기존 데이터를 유지한다.
+
 ## `... N` 큰 창 확인 방법
 
 월간 view에서 특정 날짜에 포함되는 업무가 `maxVisibleTasksPerDay`보다 많으면 해당 날짜 cell 안에 `... N` 버튼이 표시된다.
@@ -374,4 +428,4 @@ $('#taskCalendar').workTimeline('reload');
 $('#taskCalendar').workTimeline('destroy');
 ```
 
-주의: `apiUrl`이 있으면 현재 구현은 실제 AJAX 요청을 하지 않고 pending/error 구조만 표시한다. API loading은 미구현이다.
+주의: `apiUrl` 자동 AJAX loading은 아직 미구현이다. 기간 변경 데이터 조회는 `enableRemoteDataLoad`와 custom function으로 처리한다.

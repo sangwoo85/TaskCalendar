@@ -24,6 +24,7 @@
   employees: [],
   holidays: [],
   apiUrl: null,
+  enableRemoteDataLoad: false,
   employeeColumnWidth: 220,
   dayCellMinWidth: 96,
   maxVisibleTasksPerDay: 3,
@@ -35,6 +36,7 @@
   taskClickFunctionName: null,
   taskMoveFunctionName: null,
   taskEndDateChangeFunctionName: null,
+  rangeChangeFunctionName: null,
   onTaskClick: null,
   onTaskMove: null,
   onTaskEndDateChange: null,
@@ -57,6 +59,7 @@
 | `tasks` | 구현 | direct data 업무 목록 |
 | `holidays` | 구현 | direct data 휴일 목록 |
 | `apiUrl` | 구조만 있음 | 실제 AJAX loading은 미구현. pending 상태를 표시함 |
+| `enableRemoteDataLoad` | 구현 | 기간 변경 시 custom function으로 데이터 재조회 허용 여부. 기본값 `false` |
 | `employeeColumnWidth` | 구현 | 주간 직원 컬럼 너비 |
 | `dayCellMinWidth` | 구현 | 주간 날짜 cell 최소 너비 |
 | `maxVisibleTasksPerDay` | 구현 | 월간 날짜 cell 하나에 표시할 day-list 업무 label 최대 개수 |
@@ -68,13 +71,14 @@
 | `taskClickFunctionName` | 구현 | `onTaskClick`이 없을 때 호출할 전역 함수 이름 |
 | `taskMoveFunctionName` | 구현 | `onTaskMove`가 없을 때 cardSection drag 완료 후 호출할 전역 함수 이름 |
 | `taskEndDateChangeFunctionName` | 구현 | `onTaskEndDateChange`가 없을 때 cardSection 종료일 변경 후 호출할 전역 함수 이름 |
+| `rangeChangeFunctionName` | 구현 | `enableRemoteDataLoad: true`이고 `onRangeChange`가 없을 때 호출할 전역 데이터 로딩 함수 이름 |
 
 ## Callback 목록
 
 | Callback | 구현 상태 | 호출 시점 |
 | --- | --- | --- |
 | `onInit(instance)` | 구현 | 초기 렌더 후 |
-| `onRangeChange(range, instance)` | 구현 | view 변경, 이동, today, goTo 후 |
+| `onRangeChange(payload)` | 구현 | `enableRemoteDataLoad: true`일 때 기간 변경 데이터 로더로 호출. Promise/jqXHR 또는 object 반환 가능 |
 | `onDataLoaded(data, instance)` | 구현 | `setData()` 호출 후 |
 | `onTaskClick(task, payload, event)` | 구현 | 업무 bar 클릭 시. 첫 번째 인자 `task`는 기존 호환 유지 |
 | `onTaskMove(payload)` | 구현 | `enableTaskDrag: true`이고 task가 수정 가능할 때 cardSection 업무 card/bar drag 완료 시 |
@@ -82,6 +86,28 @@
 | `onMoreClick(date, hiddenTasks, allTasks)` | 구현 | 월간 `... N` 클릭 시 |
 | `onEmployeeClick(employee, event)` | 구현 | 주간 직원 row 클릭 시 |
 | `onError(error, instance)` | 구현 | 잘못된 날짜 또는 미구현 API loading 경로 |
+
+## 기간 변경 데이터 로딩 커스터마이징
+
+`enableRemoteDataLoad: true`이면 `prev`, `next`, `today`, view 전환, `reload()`에서 데이터 로딩 custom function을 호출한다.
+
+호출 우선순위:
+
+```text
+1. onRangeChange(payload)
+2. window[rangeChangeFunctionName](payload)
+3. 호출하지 않음
+```
+
+응답 처리:
+
+- Promise/jqXHR를 반환하면 resolve 후 데이터를 반영한다.
+- 일반 object를 반환하면 즉시 데이터를 반영한다.
+- 반환값이 없으면 기존 데이터로 현재 기간 shell을 유지한다.
+- `success === false` 또는 reject/fail이면 기존 데이터를 유지하고 `console.warn`만 수행한다.
+- 응답에 포함된 `employees`, `tasks`, `holidays` 필드만 갱신한다.
+- `tasks: []`처럼 빈 배열이 명시되면 빈 배열로 갱신한다.
+- 빠른 이전/다음 클릭으로 요청이 겹치면 마지막 요청 결과만 반영한다.
 
 ## 상태값별 CSS class
 
