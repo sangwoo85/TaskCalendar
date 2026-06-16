@@ -351,6 +351,7 @@ function loadTaskCalendarData(payload) {
     dataType: 'json',
     data: {
       viewType: payload.viewType,
+      searchDate: payload.baseDateParam,
       startDate: payload.visibleStartDate,
       endDate: payload.visibleEndDate
     }
@@ -359,7 +360,9 @@ function loadTaskCalendarData(payload) {
 
 $('#taskCalendar').workTimeline({
   viewType: 'month',
+  defaultDate: '2026-07-15',
   enableRemoteDataLoad: true,
+  loadOnInit: true,
   rangeChangeFunctionName: 'loadTaskCalendarData',
   taskClickFunctionName: 'openTaskDetail',
   taskMoveFunctionName: 'onTaskMoveDummy',
@@ -381,6 +384,7 @@ $('#taskCalendar').workTimeline({
       dataType: 'json',
       data: {
         viewType: payload.viewType,
+        searchDate: payload.baseDateParam,
         startDate: payload.visibleStartDate,
         endDate: payload.visibleEndDate
       }
@@ -389,7 +393,9 @@ $('#taskCalendar').workTimeline({
 });
 ```
 
-`payload`에는 `viewType`, `weeklyDisplayMode`, `visibleStartDate`, `visibleEndDate`, `baseDate`, `action`, `previousVisibleStartDate`, `previousVisibleEndDate`가 포함된다. custom function이 Promise/jqXHR 또는 `{ employees, tasks, holidays }` object를 반환하면 응답에 포함된 필드만 내부 데이터에 반영한다. 반환값이 없거나 실패하면 기존 데이터를 유지한다.
+`payload`에는 `viewType`, `weeklyDisplayMode`, `visibleStartDate`, `visibleEndDate`, `baseDate`, `baseDateParam`, `action`, `previousVisibleStartDate`, `previousVisibleEndDate`가 포함된다. 월간 이동 시 `baseDate`는 이동한 월의 15일이고, 주간 이동 시 `baseDate`는 `visibleStartDate + 3일`이다. `baseDateParam`은 `YYYYMMDD` 형식이므로 API의 `searchDate`로 그대로 사용할 수 있다. custom function이 Promise/jqXHR 또는 `{ employees, tasks, holidays }` object를 반환하면 응답에 포함된 필드만 내부 데이터에 반영한다. 반환값이 없거나 실패하면 기존 데이터를 유지한다.
+
+`defaultDate`를 지정하면 최초 화면은 해당 날짜 기준으로 표시된다. 없으면 기존 `currentDate`, `todayDate`, 오늘 날짜 순서로 기준 날짜를 결정한다. `enableRemoteDataLoad: true`이고 `loadOnInit: true`이면 최초 렌더링 후 `action: 'init'` payload로 custom function을 호출한다.
 
 ## `... N` 큰 창 확인 방법
 

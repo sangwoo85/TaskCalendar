@@ -180,12 +180,15 @@ function loadTaskCalendarData(payload) {
     dataType: 'json',
     data: {
       viewType: payload.viewType,
+      searchDate: payload.baseDateParam,
       startDate: payload.visibleStartDate,
       endDate: payload.visibleEndDate
     }
   });
 }
 ```
+
+`baseDate`는 조회 기준 날짜이고 `baseDateParam`은 업무 시스템 API에서 쓰기 쉬운 `YYYYMMDD` 형식이다. 월간 view에서는 표시 월의 15일을 사용하고, 주간 view에서는 `visibleStartDate + 3일`을 사용한다. `today` action은 오늘 날짜를 기준으로 전달한다.
 
 응답 구조는 다음 필드를 지원한다.
 

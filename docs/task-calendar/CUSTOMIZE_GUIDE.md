@@ -12,6 +12,7 @@
 {
   viewType: 'week',
   currentDate: null,
+  defaultDate: null,
   visibleStartDate: null,
   visibleEndDate: null,
   todayDate: null,
@@ -25,6 +26,7 @@
   holidays: [],
   apiUrl: null,
   enableRemoteDataLoad: false,
+  loadOnInit: true,
   employeeColumnWidth: 220,
   dayCellMinWidth: 96,
   maxVisibleTasksPerDay: 3,
@@ -48,6 +50,7 @@
 | --- | --- | --- |
 | `viewType` | 구현 | `week` 또는 `month` |
 | `currentDate` | 구현 | 현재 view 기준일 |
+| `defaultDate` | 구현 | 최초 표시 기준 날짜. `YYYY-MM-DD`. 지정 시 `currentDate`보다 우선 |
 | `visibleStartDate`, `visibleEndDate` | 구현 | 주간 view 고정 범위 테스트용. 월간 view는 `currentDate` 기준 월 범위를 사용 |
 | `todayDate` | 구현 | today 표시 기준값 |
 | `weekStartsOn` | 구현 | `0` 일요일 시작, `1` 월요일 시작 |
@@ -60,6 +63,7 @@
 | `holidays` | 구현 | direct data 휴일 목록 |
 | `apiUrl` | 구조만 있음 | 실제 AJAX loading은 미구현. pending 상태를 표시함 |
 | `enableRemoteDataLoad` | 구현 | 기간 변경 시 custom function으로 데이터 재조회 허용 여부. 기본값 `false` |
+| `loadOnInit` | 구현 | `enableRemoteDataLoad: true`일 때 초기화 직후 custom function 호출 여부. 기본값 `true` |
 | `employeeColumnWidth` | 구현 | 주간 직원 컬럼 너비 |
 | `dayCellMinWidth` | 구현 | 주간 날짜 cell 최소 너비 |
 | `maxVisibleTasksPerDay` | 구현 | 월간 날짜 cell 하나에 표시할 day-list 업무 label 최대 개수 |
@@ -108,6 +112,8 @@
 - 응답에 포함된 `employees`, `tasks`, `holidays` 필드만 갱신한다.
 - `tasks: []`처럼 빈 배열이 명시되면 빈 배열로 갱신한다.
 - 빠른 이전/다음 클릭으로 요청이 겹치면 마지막 요청 결과만 반영한다.
+- payload의 `baseDateParam`은 `YYYYMMDD` 형식이며 업무 시스템 API의 `searchDate`로 사용할 수 있다.
+- 월간 payload의 `baseDate`는 표시 월의 15일, 주간 payload의 `baseDate`는 `visibleStartDate + 3일`이다.
 
 ## 상태값별 CSS class
 

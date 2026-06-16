@@ -94,6 +94,8 @@
 - `today`: 오늘 날짜가 포함된 주 또는 월로 이동한다.
 - `enableRemoteDataLoad: false`이면 기존 direct data 기준으로 다시 렌더링한다.
 - `enableRemoteDataLoad: true`이면 표시 기간 변경 후 `onRangeChange(payload)` 또는 `rangeChangeFunctionName(payload)` custom function을 호출해 새 데이터를 받을 수 있다.
+- `defaultDate`가 있으면 최초 화면은 해당 날짜 기준으로 표시한다. `defaultDate`가 없으면 기존 `currentDate`, `todayDate`, 오늘 날짜 순서로 기준 날짜를 결정한다.
+- `loadOnInit: true`이고 `enableRemoteDataLoad: true`이면 최초 렌더링 후 `action: 'init'` payload로 custom function을 호출한다.
 - custom function이 정상 데이터를 반환하면 응답에 포함된 `employees`, `tasks`, `holidays` 필드만 내부 데이터에 반영하고 현재 view를 다시 렌더링한다.
 - custom function이 값을 반환하지 않거나 실패하면 기존 데이터를 유지한다.
 - 빠른 이전/다음 클릭으로 요청이 겹치면 마지막 요청 결과만 반영한다.
@@ -107,14 +109,15 @@
   weeklyDisplayMode: 'cardSection',
   visibleStartDate: '2026-06-01',
   visibleEndDate: '2026-06-30',
-  baseDate: '2026-06-01',
+  baseDate: '2026-06-15',
+  baseDateParam: '20260615',
   action: 'next',
   previousVisibleStartDate: '2026-05-01',
   previousVisibleEndDate: '2026-05-31'
 }
 ```
 
-`action`은 `prev`, `next`, `today`, `viewChange`, `goTo`, `reload` 중 하나다. `taskCalendar`는 서버 API URL을 직접 알 필요가 없으며 실제 AJAX/API 호출은 custom function 내부에서 처리한다.
+`action`은 `init`, `prev`, `next`, `today`, `viewChange`, `goTo`, `reload` 중 하나다. 월간 view의 `baseDate`는 표시 월의 15일이고, 주간 view의 `baseDate`는 `visibleStartDate + 3일`이다. `baseDateParam`은 `YYYYMMDD` 형식이며 API의 `searchDate` parameter로 사용할 수 있다. `taskCalendar`는 서버 API URL을 직접 알 필요가 없으며 실제 AJAX/API 호출은 custom function 내부에서 처리한다.
 
 ## 직원 row
 
@@ -126,6 +129,7 @@
 - 옵션으로 향후 `employeeSort` callback을 확장할 수 있다.
 - 직원 row 구조는 주간 보기에서만 사용한다.
 - 월간 보기는 직원 row 없이 calendar week row 안에 업무 bar를 표시한다.
+- 주간 보기에서는 employees/tasks가 비어 있어도 empty message를 표시하지 않고 빈 주간 calendar shell을 렌더링한다.
 
 ## 업무 bar 표시
 
@@ -295,7 +299,9 @@ spanDays = daysBetween(segmentStartDate, segmentEndDate) + 1
 - `enableTaskDrag`: 주간 `cardSection` 업무 card/bar drag 시작일 변경 허용 여부, 기본값 `true`
 - `enableTaskEndDateEdit`: 주간 `cardSection` 업무 card/bar double click 종료일 변경 허용 여부, 기본값 `true`
 - `defaultTaskEditable`: task의 `canEdit`이 없을 때 수정 가능 여부, 기본값 `false`
+- `defaultDate`: 최초 표시 기준 날짜, `YYYY-MM-DD`, 기본값 `null`
 - `enableRemoteDataLoad`: 기간 변경 시 custom function으로 데이터 재조회 허용 여부, 기본값 `false`
+- `loadOnInit`: 초기화 시 remote custom function 호출 여부, 기본값 `true`
 - `taskColorMode`: 업무 색상 정책, `status` 또는 `random`, 기본값 `status`
 - `randomTaskColorPaletteSize`: random 색상 class 개수, 기본값 `8`
 - `taskColorSeedField`: random 색상 계산 기준 field, 기본값 `taskId`
@@ -390,8 +396,8 @@ cardSection click payload 예:
 ## Empty, loading, error 상태
 
 ### Empty
-- employee와 task가 모두 없으면 empty 상태를 표시한다.
-- 주간 보기에서 해당 주와 겹치는 업무가 있는 직원이 없으면 empty 상태를 표시한다.
+- 주간 보기에서는 employee와 task가 모두 없어도 empty 상태를 표시하지 않고 빈 주간 shell을 표시한다.
+- 주간 보기에서 해당 주와 겹치는 업무가 없어도 empty 상태를 표시하지 않는다.
 - 월간 보기에서 task가 없으면 empty 상태를 표시한다.
 
 ### Loading

@@ -171,6 +171,14 @@ displayEndDate = min(task.endDate, visibleEndDate)
 - [ ] `apiUrl` 방식 자동 AJAX loading은 현재 미구현임을 문서와 화면에서 명확히 표시한다.
 - [ ] `enableRemoteDataLoad=false`이면 기존처럼 direct data 기준으로 동작한다.
 - [ ] `enableRemoteDataLoad=true`이면 이전/다음 기간 변경 시 custom function이 호출된다.
+- [ ] `defaultDate`를 지정하면 최초 캘린더가 해당 날짜 기준으로 표시된다.
+- [ ] `defaultDate`가 없으면 오늘 날짜 기준으로 표시된다.
+- [ ] `enableRemoteDataLoad=true`, `loadOnInit=true`이면 최초 조회 callback이 호출된다.
+- [ ] 최초 조회 payload에 `baseDate`와 `baseDateParam`이 포함된다.
+- [ ] 월간 next 이동 시 `baseDateParam`이 이동한 월의 15일 기준으로 전달된다.
+- [ ] 월간 prev 이동 시 `baseDateParam`이 이동한 월의 15일 기준으로 전달된다.
+- [ ] 주간 이동 시 `baseDateParam`이 해당 주의 중간 날짜 기준으로 전달된다.
+- [ ] custom function에서 `payload.baseDateParam`을 `searchDate`로 사용할 수 있다.
 - [ ] `onRangeChange`가 `rangeChangeFunctionName`보다 우선 호출된다.
 - [ ] payload에 `viewType`, `visibleStartDate`, `visibleEndDate`, `action`이 포함된다.
 - [ ] custom function이 jqXHR/Promise를 반환하면 완료 후 데이터를 갱신한다.
@@ -251,8 +259,9 @@ displayEndDate = min(task.endDate, visibleEndDate)
 
 ## Empty/loading/error 상태
 
-- [ ] employee와 task가 모두 없을 때 empty 상태가 표시된다.
-- [ ] 주간 보기에서 해당 주와 겹치는 업무가 없으면 empty 상태가 표시된다.
+- [ ] 빈 데이터 응답에서도 주간 캘린더가 깨지지 않는다.
+- [ ] 주간 view에서 “데이터가 없습니다” 문구가 표시되지 않는다.
+- [ ] 월간 보기에서 task가 모두 없을 때 empty 상태가 표시된다.
 - [ ] loading 상태에서 사용자가 중복 요청을 발생시키지 않도록 처리된다.
 - [ ] error 상태에서 사용자가 다시 시도할 수 있다.
 

@@ -35,9 +35,10 @@ taskCalendar/
 2. 기존 instance가 없으면 `new WorkTimeline(element, options)` 생성
 3. 기본 option과 사용자 option 병합
 4. `employees`, `tasks`, `holidays` 저장
-5. `viewType`, `currentDate` 결정
+5. `viewType`, 기준 날짜 결정. `defaultDate`, `currentDate`, `todayDate`, 오늘 날짜 순서로 사용
 6. `render()` 실행
-7. `onInit(instance)` 호출
+7. `enableRemoteDataLoad: true`와 `loadOnInit: true`이면 `action: 'init'`으로 custom function 호출
+8. `onInit(instance)` 호출
 
 ## 기간 변경 remote data 흐름
 
@@ -48,6 +49,9 @@ taskCalendar/
   -> 새 visible range 계산
   -> render()로 변경된 기간 shell 표시
   -> buildRangeChangePayload(action, previousRange)
+  -> 월간 baseDate = 표시 월 15일
+  -> 주간 baseDate = visibleStartDate + 3일
+  -> baseDateParam = YYYYMMDD
   -> onRangeChange(payload) 우선 호출
   -> 없으면 window[rangeChangeFunctionName](payload) 호출
   -> Promise/jqXHR 또는 object 응답 처리
@@ -80,6 +84,10 @@ loading 중에는 root element에 `wt-loading wt-calendar-loading` class를 추�
 - `buildRangeChangePayload(action, previousRange)`: 기간 변경 custom function에 전달할 payload를 만든다.
 - `loadRemoteData(action, previousRange)`: 기간 변경 데이터 로딩 custom function을 호출하고 응답을 처리한다.
 - `updateDataFromResponse(response)`: 응답에 포함된 `employees`, `tasks`, `holidays`만 내부 데이터에 반영한다.
+- `resolveInitialBaseDate(options)`: `defaultDate`, `currentDate`, `todayDate`, 오늘 날짜 순서로 최초 기준 날짜를 결정한다.
+- `formatDateParam(date)`: `YYYY-MM-DD`를 `YYYYMMDD`로 변환한다.
+- `getMonthMiddleDate(baseDate)`: 월간 조회 기준 날짜를 해당 월 15일로 만든다.
+- `getWeekMiddleDate(visibleStartDate)`: 주간 조회 기준 날짜를 `visibleStartDate + 3일`로 만든다.
 - `getTaskColorClass(task, options)`: 모든 view의 업무 색상 class 계산 entry point다.
 - `getStatusTaskColorClass(task)`: status 값을 `wt-task-status-*` class로 변환한다.
 - `getRandomTaskColorClass(task, options)`: task seed hash를 `wt-task-color-random-N` class로 변환한다.

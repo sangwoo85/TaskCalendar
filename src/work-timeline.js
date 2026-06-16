@@ -11,6 +11,7 @@
   var defaults = {
     viewType: 'week',
     currentDate: null,
+    defaultDate: null,
     visibleStartDate: null,
     visibleEndDate: null,
     todayDate: null,
@@ -24,6 +25,7 @@
     holidays: [],
     apiUrl: null,
     enableRemoteDataLoad: false,
+    loadOnInit: true,
     employeeColumnWidth: 220,
     dayCellMinWidth: 96,
     maxVisibleTasksPerDay: 3,
@@ -67,7 +69,7 @@
     this.tasks = arrayOrEmpty(this.options.tasks);
     this.holidays = normalizeHolidays(this.options.holidays);
     this.viewType = this.options.viewType === 'month' ? 'month' : 'week';
-    this.currentDate = this.options.currentDate || this.options.todayDate || formatToday();
+    this.currentDate = resolveInitialBaseDate(this.options);
     this.handlers = [];
     this.dragState = null;
     this.taskClickTimer = null;
@@ -76,6 +78,9 @@
     this.isRemoteLoading = false;
     this.destroyed = false;
     this.render();
+    if (this.options.enableRemoteDataLoad && this.options.loadOnInit !== false) {
+      this.loadRemoteData('init', null);
+    }
     call(this.options.onInit, this, [this]);
   }
 
@@ -260,16 +265,28 @@
   };
 
   WorkTimeline.prototype.buildRangeChangePayload = function (action, previousRange) {
+    var baseDate = this.resolvePayloadBaseDate(action);
     return {
       viewType: this.viewType,
       weeklyDisplayMode: this.getWeeklyDisplayMode(),
       visibleStartDate: this.range.startDate,
       visibleEndDate: this.range.endDate,
-      baseDate: this.currentDate,
+      baseDate: baseDate,
+      baseDateParam: formatDateParam(baseDate),
       action: action,
       previousVisibleStartDate: previousRange ? previousRange.startDate : '',
       previousVisibleEndDate: previousRange ? previousRange.endDate : ''
     };
+  };
+
+  WorkTimeline.prototype.resolvePayloadBaseDate = function (action) {
+    if (action === 'today') {
+      return this.options.todayDate || formatToday();
+    }
+    if (this.viewType === 'month') {
+      return getMonthMiddleDate(this.range.startDate);
+    }
+    return getWeekMiddleDate(this.range.startDate);
   };
 
   WorkTimeline.prototype.handleRangeChanged = function (action, previousRange) {
@@ -417,22 +434,14 @@
   };
 
   WorkTimeline.prototype.renderTimelineGrid = function () {
-    if (!this.employees.length && !this.tasks.length) {
-      return this.renderState('wt-state-empty', this.options.labels.empty);
-    }
-
     var grid = el('div', 'wt-grid wt-grid-' + this.viewType);
     var employeeColumn = el('div', 'wt-employee-column');
     var timeline = el('div', 'wt-timeline');
     var body = el('div', 'wt-timeline-body');
     var groupedTasks = groupVisibleTasks(this.employees, this.tasks, this.range);
-    var visibleEmployees = filterEmployeesWithVisibleTasks(this.employees, groupedTasks);
+    var visibleEmployees = this.tasks.length ? filterEmployeesWithVisibleTasks(this.employees, groupedTasks) : this.employees;
     var today = this.options.todayDate || formatToday();
     var holidayMap = buildHolidayMap(this.holidays);
-
-    if (!visibleEmployees.length) {
-      return this.renderState('wt-state-empty', this.options.labels.empty);
-    }
 
     grid.style.setProperty('--wt-employee-column-width', this.options.employeeColumnWidth + 'px');
     grid.style.setProperty('--wt-day-cell-min-width', this.options.dayCellMinWidth + 'px');
@@ -458,10 +467,6 @@
   };
 
   WorkTimeline.prototype.renderWeekCardSections = function () {
-    if (!this.tasks.length) {
-      return this.renderState('wt-state-empty', this.options.labels.empty);
-    }
-
     var wrap = el('div', 'wt-week-card-sections');
     var today = this.options.todayDate || formatToday();
     var holidayMap = buildHolidayMap(this.holidays);
@@ -476,10 +481,6 @@
     for (var i = 0; i < this.range.days.length; i += 1) {
       var dateText = this.range.days[i];
       wrap.appendChild(this.renderWeekCardDay(dateText, countWeekItemsOnDate(flatItems, dateText), today, holidayMap));
-    }
-
-    if (!flatItems.length) {
-      wrap.appendChild(el('div', 'wt-week-card-empty wt-week-range-empty', this.options.labels.empty));
     }
 
     for (var laneIndex = 0; laneIndex < lanes.length; laneIndex += 1) {
@@ -1843,6 +1844,34 @@
   function formatToday() {
     var now = new Date();
     return pad(now.getFullYear()) + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+  }
+
+  function resolveInitialBaseDate(options) {
+    if (options && isDateOnly(options.defaultDate)) {
+      return options.defaultDate;
+    }
+    if (options && isDateOnly(options.currentDate)) {
+      return options.currentDate;
+    }
+    if (options && isDateOnly(options.todayDate)) {
+      return options.todayDate;
+    }
+    return formatToday();
+  }
+
+  function formatDateParam(dateText) {
+    return isDateOnly(dateText) ? dateText.replace(/-/g, '') : '';
+  }
+
+  function getMonthMiddleDate(baseDate) {
+    if (!isDateOnly(baseDate)) {
+      return '';
+    }
+    return baseDate.slice(0, 8) + '15';
+  }
+
+  function getWeekMiddleDate(visibleStartDate) {
+    return isDateOnly(visibleStartDate) ? addDays(visibleStartDate, 3) : '';
   }
 
   function maxDateText(a, b) {
