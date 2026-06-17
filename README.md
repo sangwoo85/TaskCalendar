@@ -105,6 +105,7 @@ $('#taskCalendar').workTimeline({
 - [FEATURE_SPEC.md](./docs/task-calendar/FEATURE_SPEC.md): 기능 명세
 - [DESIGN_GUIDE.md](./docs/task-calendar/DESIGN_GUIDE.md): 디자인 기준
 - [API_SPEC.md](./docs/task-calendar/API_SPEC.md): API 데이터 구조
+- [API_USAGE_GUIDE.md](./docs/task-calendar/API_USAGE_GUIDE.md): API 연동 사용자 가이드
 - [USAGE_GUIDE.md](./docs/task-calendar/USAGE_GUIDE.md): JSP + jQuery 사용 방법
 - [CUSTOMIZE_GUIDE.md](./docs/task-calendar/CUSTOMIZE_GUIDE.md): 옵션, callback, CSS 커스터마이징 방법
 - [ARCHITECTURE.md](./docs/task-calendar/ARCHITECTURE.md): 내부 렌더링/날짜 계산 구조

@@ -130,7 +130,8 @@
         <li>defaultDate: 2026-07-15 예시는 최초 payload.baseDateParam이 20260715여야 합니다.</li>
         <li>월간 next 이동 시 payload.baseDateParam은 이동한 월의 15일이어야 합니다.</li>
         <li>주간 이동 시 payload.baseDateParam은 visibleStartDate + 3일이어야 합니다.</li>
-        <li>월간 2026-08 이동은 mock 실패 케이스이며 캘린더가 깨지지 않아야 합니다.</li>
+        <li>다음/이전 이동 시 payload.baseDate 기준으로 mock API가 신규 더미 업무를 생성해야 합니다.</li>
+        <li>브라우저 개발자도구 Console에서 mock API 반환 직전 payload/response/tasks 로그를 확인할 수 있어야 합니다.</li>
         <li>월간 2026-09 이동은 빈 tasks 응답 케이스이며 empty 상태가 정상 표시되어야 합니다.</li>
         <li>주간 빈 응답에서는 데이터 없음 문구 없이 빈 주간 shell이 표시되어야 합니다.</li>
         <li>월간 업무는 날짜별 반복 item이 아니라 기간을 잇는 bar 형태로 표시되어야 합니다.</li>
@@ -622,35 +623,133 @@
         return copy;
       }
 
-      function createDemoTasksByRange(visibleStartDate, visibleEndDate) {
+      function addDemoDays(dateText, amount) {
+        var parts = dateText.split('-');
+        var date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        date.setDate(date.getDate() + amount);
+        return [
+          date.getFullYear(),
+          String(date.getMonth() + 1).padStart(2, '0'),
+          String(date.getDate()).padStart(2, '0')
+        ].join('-');
+      }
+
+      function clampDemoDate(dateText, minDate, maxDate) {
+        if (dateText < minDate) {
+          return minDate;
+        }
+        if (dateText > maxDate) {
+          return maxDate;
+        }
+        return dateText;
+      }
+
+      function createRemoteTask(payload, index, employeeIndex, title, startDate, endDate, status, canEdit) {
+        var employee = employees[employeeIndex];
+        return {
+          taskId: 'REMOTE_' + payload.baseDateParam + '_' + index,
+          employeeId: employee.id,
+          employeeName: employee.name,
+          departmentId: employee.departmentId,
+          departmentName: employee.departmentName,
+          title: title,
+          startDate: startDate,
+          endDate: endDate,
+          status: status,
+          canEdit: canEdit
+        };
+      }
+
+      function createRemoteTasksByPayload(payload) {
+        var baseDate = payload.baseDate || payload.visibleStartDate;
+        var visibleStartDate = payload.visibleStartDate;
+        var visibleEndDate = payload.visibleEndDate;
+        var rangeStart = clampDemoDate(addDemoDays(baseDate, -2), visibleStartDate, visibleEndDate);
+        var rangeEnd = clampDemoDate(addDemoDays(baseDate, 2), visibleStartDate, visibleEndDate);
+        var nextDay = clampDemoDate(addDemoDays(baseDate, 1), visibleStartDate, visibleEndDate);
+        var tailStart = clampDemoDate(addDemoDays(visibleEndDate, -2), visibleStartDate, visibleEndDate);
+
+        return [
+          createRemoteTask(payload, 1, 0, '[API 재조회] 기준일 ' + baseDate + ' 핵심 업무', baseDate, baseDate, 'IN_PROGRESS', true),
+          createRemoteTask(payload, 2, 1, '[API 재조회] ' + payload.action + ' 기간 연속 업무', rangeStart, rangeEnd, 'TODO', true),
+          createRemoteTask(payload, 3, 2, '[API 재조회] 담당자 검토 업무', nextDay, nextDay, 'DONE', false),
+          createRemoteTask(payload, 4, 3, '[API 재조회] 기간 마감 점검', tailStart, visibleEndDate, 'HOLD', true)
+        ];
+      }
+
+      function createDemoTasksByRange(payload) {
+        var visibleStartDate = payload.visibleStartDate;
+        var visibleEndDate = payload.visibleEndDate;
         var result = [];
         for (var i = 0; i < allDemoTasks.length; i += 1) {
           if (allDemoTasks[i].startDate <= visibleEndDate && allDemoTasks[i].endDate >= visibleStartDate) {
             result.push(cloneTask(allDemoTasks[i]));
           }
         }
+        var remoteTasks = createRemoteTasksByPayload(payload);
+        for (var j = 0; j < remoteTasks.length; j += 1) {
+          if (remoteTasks[j].startDate <= visibleEndDate && remoteTasks[j].endDate >= visibleStartDate) {
+            result.push(remoteTasks[j]);
+          }
+        }
         return result;
+      }
+
+      function logRemoteDebug(stage, payload, response) {
+        if (!window.console || !window.console.log) {
+          return;
+        }
+
+        console.group('[taskCalendar demo] ' + stage);
+        console.log('payload:', payload);
+        if (response) {
+          console.log('response:', response);
+          console.log('employees count:', response.employees ? response.employees.length : 0);
+          console.log('tasks count:', response.tasks ? response.tasks.length : 0);
+          console.log('holidays count:', response.holidays ? response.holidays.length : 0);
+          if (console.table && response.tasks) {
+            console.table(response.tasks.map(function (task) {
+              return {
+                taskId: task.taskId,
+                title: task.title,
+                employeeName: task.employeeName,
+                startDate: task.startDate,
+                endDate: task.endDate,
+                status: task.status
+              };
+            }));
+          }
+        }
+        console.groupEnd();
       }
 
       function loadTaskCalendarDataMock(payload) {
         var message = 'remote data load: ' + payload.action + ' / baseDate=' + payload.baseDate + ' / baseDateParam=' + payload.baseDateParam + ' / visible=' + payload.visibleStartDate + ' ~ ' + payload.visibleEndDate;
         document.getElementById('clickResult').textContent = message;
         document.getElementById('remoteInitResult').textContent = message;
+        logRemoteDebug('custom function called', payload, null);
 
         return new Promise(function (resolve, reject) {
           window.setTimeout(function () {
-            if (payload.viewType === 'month' && payload.visibleStartDate === '2026-08-01') {
-              reject({ code: 'MOCK_ERROR', message: '2026-08 mock failure' });
-              return;
-            }
-            resolve({
+            var response = {
               success: true,
               employees: employees,
-              tasks: payload.viewType === 'month' && payload.visibleStartDate === '2026-09-01' ? [] : createDemoTasksByRange(payload.visibleStartDate, payload.visibleEndDate),
+              tasks: payload.viewType === 'month' && payload.visibleStartDate === '2026-09-01' ? [] : createDemoTasksByRange(payload),
               holidays: demoHolidays
-            });
+            };
+            logRemoteDebug('before resolve(response) - redraw has not happened yet', payload, response);
+            resolve(response);
           }, 300);
         });
+      }
+
+      function onRemoteDataLoadedDebug(response, instance) {
+        logRemoteDebug('onDataLoaded - response applied and calendar rendered', {
+          viewType: instance.viewType,
+          visibleStartDate: instance.range ? instance.range.startDate : '',
+          visibleEndDate: instance.range ? instance.range.endDate : '',
+          action: 'onDataLoaded'
+        }, response);
       }
 
       window.loadTaskCalendarDataMock = loadTaskCalendarDataMock;
@@ -704,6 +803,7 @@
           employees: employees,
           tasks: tasks,
           holidays: demoHolidays,
+          onDataLoaded: onRemoteDataLoadedDebug,
           onError: function (error) {
             document.getElementById('clickResult').textContent = error.code + ': ' + error.message;
           }
@@ -732,7 +832,8 @@
           taskClickFunctionName: 'openTaskDetail',
           employees: [],
           tasks: [],
-          holidays: []
+          holidays: [],
+          onDataLoaded: onRemoteDataLoadedDebug
         });
       }
 
